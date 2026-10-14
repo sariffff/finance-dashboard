@@ -28,7 +28,7 @@ npm run dev                   # Next.js dev server
 npm run db:generate           # สร้าง migration จาก schema
 npm run db:migrate            # รัน migration
 npm run db:seed               # ใส่ข้อมูลตัวอย่าง + demo account
-npm run fixtures:scb          # สร้าง PDF ปลอมสำหรับ test parser (รหัส 01011990)
+npm run fixtures              # สร้าง PDF ปลอมสำหรับ test parser (SCB รหัส 01011990, KBANK 15061995)
 npm run test                  # Vitest (integration test ต้องเปิด docker db ก่อน)
 npm run lint && npm run typecheck
 ```

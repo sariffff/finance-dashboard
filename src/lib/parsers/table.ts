@@ -97,8 +97,6 @@ function findLayout(line: PdfLine, config: TableLayoutConfig): Layout | null {
       }
     }
   }
-  if (!config.requiredColumns.every((key) => found.has(key))) return null;
-
   // One header naming both directions ("ถอนเงิน / ฝากเงิน") is a single
   // amount column.
   if (found.has("withdrawal") && found.get("withdrawal") === found.get("deposit")) {
@@ -107,6 +105,10 @@ function findLayout(line: PdfLine, config: TableLayoutConfig): Layout | null {
     found.delete("deposit");
   }
   const codeChannelMerged = found.has("code") && found.get("code") === found.get("channel");
+
+  // Checked after merging, so a layout that needs separate withdrawal and
+  // deposit columns doesn't accept another bank's single amount column.
+  if (!config.requiredColumns.every((key) => found.has(key))) return null;
   if (codeChannelMerged) found.delete("channel");
 
   const columns = [...found].map(([key, item]) => ({
