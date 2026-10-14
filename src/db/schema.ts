@@ -4,14 +4,18 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
   text,
+  time,
   timestamp,
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
+
+import type { ParsedStatement } from "@/lib/parsers/types";
 
 import { user } from "./auth-schema";
 
@@ -30,7 +34,7 @@ export const matchType = pgEnum("match_type", ["contains", "regex"]);
 export const ruleSource = pgEnum("rule_source", ["system", "user", "ai_cache"]);
 export const fileType = pgEnum("file_type", ["csv", "pdf", "slip"]);
 export const importStatus = pgEnum("import_status", [
-  "processing",
+  "pending", // parsed, waiting for the user to confirm the preview
   "completed",
   "failed",
 ]);
@@ -82,7 +86,10 @@ export const imports = pgTable(
     fileType: fileType("file_type").notNull(),
     // object key of the original file in Cloudflare R2 (Phase 7)
     storageKey: text("storage_key"),
-    status: importStatus("status").notNull().default("processing"),
+    status: importStatus("status").notNull().default("pending"),
+    // Parsed rows shown on the preview page. Only kept while pending;
+    // cleared once the import is confirmed.
+    preview: jsonb("preview").$type<ParsedStatement>(),
     rowCount: integer("row_count").notNull().default(0),
     duplicateCount: integer("duplicate_count").notNull().default(0),
     createdAt: createdAt(),
@@ -102,6 +109,7 @@ export const transactions = pgTable(
       onDelete: "set null",
     }),
     occurredAt: date("occurred_at").notNull(),
+    occurredTime: time("occurred_time"),
     description: text("description").notNull(),
     merchant: text("merchant"),
     // Always positive; the sign lives in `direction`. Read as a string to

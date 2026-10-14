@@ -15,6 +15,13 @@
       "when": 1791982789299,
       "tag": "0001_sparkling_crusher_hogan",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791984381784,
+      "tag": "0002_aromatic_wind_dancer",
+      "breakpoints": true
     }
   ]
 }
