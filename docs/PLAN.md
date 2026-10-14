@@ -13,19 +13,19 @@
 ## Phase 0 — Setup ✅
 - [x] สร้างโปรเจกต์ Next.js (TypeScript, Tailwind, App Router)
 - [x] `docker-compose.yml`: PostgreSQL 17 + Adminer, ข้อมูลเก็บใน volume `pgdata`
-- [x] `.env` / `.env.example`, `.env` อยู่ใน `.gitignore`
+- [x] `.env` / `.env.example`, `.env` อยู่ใน `.gitignore` (`!.env.example` ให้ commit template ได้)
 - [x] รัน `docker compose up -d` และเข้า Adminer ได้
 
 ---
 
-## Phase 1 — Database + Drizzle
-- [ ] ติดตั้ง `drizzle-orm`, `postgres`, `drizzle-kit`, `zod`, `dotenv`
-- [ ] `drizzle.config.ts` อ่าน `DATABASE_URL` จาก `.env`
-- [ ] `src/db/index.ts` — สร้าง db client (singleton กัน connection บานตอน hot reload)
-- [ ] `src/db/schema.ts` — ตารางตาม "Data Model" ด้านล่าง
-- [ ] เพิ่ม scripts: `db:generate`, `db:migrate`, `db:studio`, `db:seed`, `typecheck`, `test`
-- [ ] Seed: หมวดหมู่ตั้งต้น (default categories) ภาษาไทย
-- [ ] ติดตั้ง Vitest + เขียน test แรก (เช่น helper แปลงจำนวนเงิน)
+## Phase 1 — Database + Drizzle ✅
+- [x] ติดตั้ง `drizzle-orm`, `postgres`, `drizzle-kit`, `zod`, `dotenv`
+- [x] `drizzle.config.ts` อ่าน `DATABASE_URL` จาก `.env`
+- [x] `src/db/index.ts` — สร้าง db client (singleton กัน connection บานตอน hot reload)
+- [x] `src/db/schema.ts` — ตารางตาม "Data Model" ด้านล่าง
+- [x] เพิ่ม scripts: `db:generate`, `db:migrate`, `db:studio`, `db:seed`, `typecheck`, `test`
+- [x] Seed: หมวดหมู่ตั้งต้น (default categories) ภาษาไทย
+- [x] ติดตั้ง Vitest + เขียน test แรก (เช่น helper แปลงจำนวนเงิน)
 
 **Done when:** `npm run db:migrate` สร้างตารางครบ เห็นใน Adminer, `npm run db:seed` ใส่หมวดหมู่ได้, typecheck ผ่าน
 
