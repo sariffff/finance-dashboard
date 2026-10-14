@@ -71,15 +71,17 @@
 
 ---
 
-## Phase 4 — จัดหมวดหมู่อัตโนมัติ (Rules → AI → Cache)
-- [ ] ขั้น 1: จับคู่กับ `category_rules` (user rules ก่อน system rules ตาม priority)
-- [ ] ขั้น 2: รายการที่ไม่ตรงกฎ → ส่งให้ AI เป็น batch (หลายรายการต่อหนึ่ง request)
-- [ ] AI ต้องตอบเป็น JSON ตาม Zod schema (`{ id, categoryName, merchant }[]`) และเลือกได้เฉพาะหมวดที่มีอยู่
-- [ ] บันทึกผล AI เป็น rule `source = ai_cache` ตามชื่อร้าน → ครั้งหน้าไม่ต้องเรียก AI ซ้ำ
-- [ ] ผู้ใช้แก้หมวดเองได้ → ถามว่า "ใช้กับร้านนี้ทุกครั้งไหม" → สร้าง user rule
-- [ ] ถ้า AI ล่มหรือ timeout → รายการเป็น "ยังไม่จัดหมวด" ระบบไม่พัง
-- [x] AI provider = Claude (Anthropic) — `ANTHROPIC_API_KEY` อยู่ใน `.env`
-- [ ] Test: logic การจับคู่กฎ และการ validate output ของ AI (mock AI)
+## Phase 4 — จัดหมวดหมู่อัตโนมัติ (Rules → AI → Cache) ✅
+- [x] ขั้น 1: จับคู่กับ `category_rules` (user rules → ai_cache → system rules, แล้วตาม priority / ความยาว pattern)
+- [x] ขั้น 2: รายการที่ไม่ตรงกฎ → ส่งให้ AI เป็น batch (50 รายการ/request, ถามครั้งเดียวต่อ description ที่ซ้ำกัน)
+- [x] AI ต้องตอบเป็น JSON ตาม Zod schema (`{ id, categoryName, merchant }[]`) และเลือกได้เฉพาะหมวดที่มีอยู่
+- [x] บันทึกผล AI เป็น rule `source = ai_cache` ตามชื่อร้าน → ครั้งหน้าไม่ต้องเรียก AI ซ้ำ
+- [x] ผู้ใช้แก้หมวดเองได้ → ถามว่า "ใช้กับร้านนี้ทุกครั้งไหม" → สร้าง user rule (หน้า `/dashboard/transactions`)
+- [x] ถ้า AI ล่มหรือ timeout → รายการเป็น "ยังไม่จัดหมวด" ระบบไม่พัง (มีปุ่มลองจัดหมวดอีกครั้ง)
+- [x] AI provider = Claude (Anthropic) — `ANTHROPIC_API_KEY` อยู่ใน `.env` (ไม่ใส่ = ใช้กฎอย่างเดียว)
+- [x] Test: logic การจับคู่กฎ และการ validate output ของ AI (mock AI)
+- [x] System rules ตั้งต้นสำหรับร้านที่พบบ่อยในไทย (seed)
+- [ ] ทดสอบกับ Claude API จริง (ต้องใส่ `ANTHROPIC_API_KEY` ใน `.env`) — ตอนนี้ทดสอบด้วย AI จำลองเท่านั้น
 
 **Done when:** นำเข้าแล้วรายการส่วนใหญ่มีหมวดอัตโนมัติ, นำเข้าร้านเดิมครั้งที่ 2 ไม่เรียก AI, แก้หมวดเองแล้วจำได้
 

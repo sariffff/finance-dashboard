@@ -54,6 +54,11 @@ PostgreSQL ใน Docker เปิดที่ **localhost:5433** (เครื�
   SCB parser ยังไม่เคยทดสอบกับ PDF จริง — ถ้าผู้ใช้เอาไฟล์จริงมา ให้ตรวจ layout และอัปเดต fixture
   ข้อความไทยจาก PDF ต้องผ่าน `normalizeThai()` (สระอำเพี้ยน) และ `joinItems()` (คำถูกแยกเป็นหลายชิ้น)
 - **AI output**: ต้องผ่าน Zod schema ก่อนใช้งานเสมอ ห้ามเชื่อ output ดิบ
+  - โมเดล `claude-opus-5-5` + `fallbacks: "default"` ผ่าน `@anthropic-ai/sdk` (`src/lib/categorize/ai.ts`)
+  - ไม่มี `ANTHROPIC_API_KEY` = จัดหมวดด้วยกฎอย่างเดียว ระบบต้องไม่พัง
+  - test ห้ามเรียก API จริง — ใช้ `AiCategorizer` จำลอง
+- **ตัวอักษรไทยใน regex**: สร้างด้วย `String.fromCodePoint()` (ดู `src/lib/thai.ts`)
+  เพราะเครื่องมือเขียนไฟล์แปลง Unicode escape เป็นตัวอักษรจริง ทำให้ regex อ่านไม่ออก
 - UI แสดงผลภาษาไทยเป็นหลัก, โค้ด/ชื่อตัวแปร/commit message เป็นภาษาอังกฤษ
 
 ## วิธีทำงานกับผู้ใช้
