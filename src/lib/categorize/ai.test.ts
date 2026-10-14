@@ -81,7 +81,7 @@ describe("createClaudeCategorizer", () => {
       parsed_output: { results: [{ id: 0, categoryName: "อาหารและเครื่องดื่ม", merchant: null }] },
     });
 
-    const results = await createClaudeCategorizer(client)(items, categories);
+    const results = await createClaudeCategorizer({ client })(items, categories);
 
     expect(results).toEqual([{ id: 0, categoryName: "อาหารและเครื่องดื่ม", merchant: null }]);
     const request = parse.mock.calls[0][0];
@@ -97,15 +97,25 @@ describe("createClaudeCategorizer", () => {
     });
   });
 
+  it("uses the configured model, and skips fallbacks where the model has none", async () => {
+    const { client, parse } = fakeClient({ stop_reason: "end_turn", parsed_output: { results: [] } });
+    await createClaudeCategorizer({ client, model: "claude-haiku-5-5" })(items, categories);
+
+    const request = parse.mock.calls[0][0];
+    expect(request.model).toBe("claude-haiku-5-5");
+    expect(request).not.toHaveProperty("fallbacks");
+    expect(request).not.toHaveProperty("betas");
+  });
+
   it("treats a refusal as no answer", async () => {
     const { client } = fakeClient({ stop_reason: "refusal", parsed_output: null });
-    expect(await createClaudeCategorizer(client)(items, categories)).toEqual([]);
+    expect(await createClaudeCategorizer({ client })(items, categories)).toEqual([]);
   });
 
   it("splits large inputs into batches", async () => {
     const { client, parse } = fakeClient({ stop_reason: "end_turn", parsed_output: { results: [] } });
     const many = Array.from({ length: 120 }, (_, id) => ({ id, description: `ร้าน ${id}`, direction: "out" as const }));
-    await createClaudeCategorizer(client)(many, categories);
+    await createClaudeCategorizer({ client })(many, categories);
     expect(parse).toHaveBeenCalledTimes(3);
   });
 });

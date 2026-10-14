@@ -2,6 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 
+import { DEFAULT_MODEL, refusalFallbackParams, type ClaudeModel } from "@/lib/ai/models";
+
 import type { InsightFacts } from "./facts";
 
 /** Writes Thai summary bullets from precomputed facts — Claude in production, a stub in tests. */
@@ -10,8 +12,6 @@ export type InsightWriter = {
   model: string;
   write(facts: InsightFacts): Promise<string[]>;
 };
-
-const MODEL = "claude-opus-5-5";
 
 const responseSchema = z.object({
   bullets: z.array(z.string().trim().min(1).max(200)).min(1).max(4),
@@ -27,19 +27,17 @@ Rules:
 - If a comparison value is null, don't compare.
 - No greetings, no advice beyond one short practical tip, no markdown.`;
 
-export function createClaudeInsightWriter(
+export function createClaudeInsightWriter({
+  model = DEFAULT_MODEL,
   client = new Anthropic({ timeout: 60_000, maxRetries: 1 }),
-): InsightWriter {
+}: { model?: ClaudeModel; client?: Anthropic } = {}): InsightWriter {
   return {
-    model: MODEL,
+    model,
     async write(facts) {
       const response = await client.beta.messages.parse({
-        model: MODEL,
+        model,
         max_tokens: 4000,
-        // A wrongly declined request is retried on Anthropic's recommended
-        // fallback model instead of failing.
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
+        ...refusalFallbackParams(model),
         output_config: { effort: "low", format: betaZodOutputFormat(responseSchema) },
         system: SYSTEM_PROMPT,
         messages: [{ role: "user", content: JSON.stringify(facts) }],

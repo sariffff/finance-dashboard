@@ -6,7 +6,7 @@ import {
   saveAiCacheRules,
   type CategoryAssignment,
 } from "@/db/queries/categories";
-import { env } from "@/env";
+import { isAiConfigured, modelFor } from "@/lib/ai/config";
 
 import { createClaudeCategorizer, type AiCategorizer } from "./ai";
 import { findMatchingRule, kindForDirection, normalizeForMatch, sortRules } from "./rules";
@@ -21,7 +21,7 @@ export type CategorizeStats = {
 
 /** Claude when an API key is configured, otherwise rules only. */
 export function getDefaultCategorizer(): AiCategorizer | null {
-  return env.ANTHROPIC_API_KEY ? createClaudeCategorizer() : null;
+  return isAiConfigured() ? createClaudeCategorizer({ model: modelFor("categorize") }) : null;
 }
 
 /**

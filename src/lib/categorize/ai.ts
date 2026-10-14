@@ -2,6 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 
+import { DEFAULT_MODEL, refusalFallbackParams, type ClaudeModel } from "@/lib/ai/models";
+
 import { kindForDirection, normalizeForMatch, type CategoryKind } from "./rules";
 
 export type AiCategoryRequest = {
@@ -26,7 +28,6 @@ export type AiCategorizer = (
   categories: CategoryOption[],
 ) => Promise<AiCategoryResult[]>;
 
-const MODEL = "claude-opus-5-5";
 const BATCH_SIZE = 50;
 const MIN_MERCHANT_LENGTH = 3;
 
@@ -100,21 +101,19 @@ export function validateAiResults(
   return results;
 }
 
-export function createClaudeCategorizer(
+export function createClaudeCategorizer({
+  model = DEFAULT_MODEL,
   client = new Anthropic({ timeout: 60_000, maxRetries: 1 }),
-): AiCategorizer {
+}: { model?: ClaudeModel; client?: Anthropic } = {}): AiCategorizer {
   return async (items, categories) => {
     const results: AiCategoryResult[] = [];
 
     for (let i = 0; i < items.length; i += BATCH_SIZE) {
       const batch = items.slice(i, i + BATCH_SIZE);
       const response = await client.beta.messages.parse({
-        model: MODEL,
+        model,
         max_tokens: 16000,
-        // If a safety classifier wrongly declines a batch, the API re-runs
-        // it on Anthropic's recommended fallback model instead of failing.
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
+        ...refusalFallbackParams(model),
         // Simple classification: low effort keeps it fast and cheap.
         output_config: { effort: "low", format: betaZodOutputFormat(responseSchema) },
         system: SYSTEM_PROMPT,

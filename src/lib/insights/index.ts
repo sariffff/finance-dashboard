@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { getMonthTotals, getSpendingByCategory } from "@/db/queries/dashboard";
 import { getInsight, saveInsight } from "@/db/queries/insights";
-import { env } from "@/env";
+import { isAiConfigured, modelFor } from "@/lib/ai/config";
 import { addMonths, formatMonth } from "@/lib/month";
 
 import { createClaudeInsightWriter, type InsightWriter } from "./ai";
@@ -15,7 +15,7 @@ const PROMPT_VERSION = 1;
 
 /** Claude when an API key is configured, otherwise rule-based summaries only. */
 export function getDefaultInsightWriter(): InsightWriter | null {
-  return env.ANTHROPIC_API_KEY ? createClaudeInsightWriter() : null;
+  return isAiConfigured() ? createClaudeInsightWriter({ model: modelFor("insights") }) : null;
 }
 
 async function loadFacts(userId: string, month: string): Promise<InsightFacts | null> {
