@@ -9,7 +9,7 @@ import * as schema from "./schema";
 // client on globalThis stops each reload from opening a new connection pool.
 const globalForDb = globalThis as unknown as { pgClient?: postgres.Sql };
 
-const client = globalForDb.pgClient ?? postgres(env.DATABASE_URL);
+export const client = globalForDb.pgClient ?? postgres(env.DATABASE_URL);
 
 if (env.NODE_ENV !== "production") {
   globalForDb.pgClient = client;
