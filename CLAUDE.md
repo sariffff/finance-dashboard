@@ -28,6 +28,7 @@ npm run dev                   # Next.js dev server
 npm run db:generate           # สร้าง migration จาก schema
 npm run db:migrate            # รัน migration
 npm run db:seed               # ใส่ข้อมูลตัวอย่าง + demo account
+npm run fixtures:scb          # สร้าง PDF ปลอมสำหรับ test parser (รหัส 01011990)
 npm run test                  # Vitest (integration test ต้องเปิด docker db ก่อน)
 npm run lint && npm run typecheck
 ```
@@ -49,6 +50,9 @@ PostgreSQL ใน Docker เปิดที่ **localhost:5433** (เครื�
 - **ไฟล์ statement / สลิปต้นฉบับ**: เก็บใน Cloudflare R2 แบบ private (ข้อมูลการเงินอ่อนไหว)
   bucket ห้าม public, เข้าถึงผ่าน signed URL อายุสั้นหลังเช็คเจ้าของไฟล์เท่านั้น, ผู้ใช้ลบไฟล์ของตัวเองได้
   **ห้ามเก็บรหัสผ่าน PDF**
+- **Statement parser**: แต่ละธนาคารเป็น module ใน `src/lib/parsers/` ตาม interface ใน `types.ts`
+  SCB parser ยังไม่เคยทดสอบกับ PDF จริง — ถ้าผู้ใช้เอาไฟล์จริงมา ให้ตรวจ layout และอัปเดต fixture
+  ข้อความไทยจาก PDF ต้องผ่าน `normalizeThai()` (สระอำเพี้ยน) และ `joinItems()` (คำถูกแยกเป็นหลายชิ้น)
 - **AI output**: ต้องผ่าน Zod schema ก่อนใช้งานเสมอ ห้ามเชื่อ output ดิบ
 - UI แสดงผลภาษาไทยเป็นหลัก, โค้ด/ชื่อตัวแปร/commit message เป็นภาษาอังกฤษ
 

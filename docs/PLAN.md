@@ -53,17 +53,21 @@
 
 ---
 
-## Phase 3 — Import CSV (ธนาคารเดียวก่อน)
-- [ ] ธนาคารแรก = SCB → ค้นหา format CSV ของ SCB แล้วสร้าง fixture ข้อมูลปลอม (ผู้ใช้ไม่มีไฟล์ตัวอย่าง)
-- [ ] สร้าง/เลือก bank account
-- [ ] หน้าอัปโหลด CSV → parse ฝั่ง server → **หน้า preview** ให้ผู้ใช้ตรวจก่อนบันทึก
-- [ ] Parser แยกเป็น module ต่อธนาคาร: `src/lib/parsers/<bank>.ts` ใช้ interface เดียวกัน
-      (`parse(file) => ParsedTransaction[]`) เพื่อเพิ่มธนาคารอื่นได้ง่าย
-- [ ] คำนวณ `dedupeHash` (วันที่ + จำนวนเงิน + description + บัญชี) ข้ามรายการซ้ำและแจ้งจำนวน
-- [ ] บันทึก record ใน `imports`
-- [ ] Unit test parser ด้วย fixture CSV ตัวอย่าง (ข้อมูลปลอม)
+## Phase 3 — Import SCB PDF statement ✅
+> เปลี่ยนจาก CSV → PDF (2026-10-14): บัญชีส่วนตัว SCB ดาวน์โหลดได้แค่ e-Statement PDF ที่มีรหัสผ่าน
+> CSV มีเฉพาะบัญชีธุรกิจ (Business Anywhere) และไม่มี spec สาธารณะ
+> **รูปแบบ PDF อ้างอิงจากข้อมูลสาธารณะ ยังไม่เคยทดสอบกับไฟล์จริง** → fixture เป็น PDF ปลอมที่จำลอง layout ขึ้นมา
+- [x] อ่าน PDF ด้วย `unpdf` (รองรับรหัสผ่าน, ได้ตำแหน่ง x/y ของข้อความ) — ผู้ใช้กรอกรหัส, **ไม่เก็บรหัส ไม่ log**
+- [x] สร้าง/เลือก bank account
+- [x] หน้าอัปโหลด PDF → parse ฝั่ง server → **หน้า preview** (import สถานะ `pending`) ให้ผู้ใช้ตรวจก่อนบันทึก
+- [x] Parser แยกเป็น module ต่อธนาคาร: `src/lib/parsers/<bank>.ts` ใช้ interface เดียวกัน เพื่อเพิ่มธนาคารอื่นได้ง่าย
+- [x] SCB parser: แยกคอลัมน์จากตำแหน่ง header, ถอน/ฝากจากคอลัมน์ + ตรวจกับยอดคงเหลือ, รายละเอียดหลายบรรทัด, หลายหน้า
+- [x] คำนวณ `dedupeHash` (บัญชี + วันที่ + เวลา + จำนวนเงิน + ทิศทาง + description + ลำดับที่ซ้ำในไฟล์) ข้ามรายการซ้ำและแจ้งจำนวน
+- [x] บันทึก record ใน `imports`
+- [x] Script สร้าง fixture PDF ปลอม (มีรหัสผ่าน, ภาษาไทย, 2 หน้า) + unit test parser
+- [ ] (ยกไป Phase 7) เก็บไฟล์ต้นฉบับใน R2 — ต้องมี R2 credentials ก่อน
 
-**Done when:** อัปโหลด CSV → preview → บันทึกได้, อัปโหลดไฟล์เดิมซ้ำไม่เกิดรายการซ้ำ, test parser ผ่าน
+**Done when:** อัปโหลด PDF + รหัส → preview → บันทึกได้, อัปโหลดไฟล์เดิมซ้ำไม่เกิดรายการซ้ำ, รหัสผิดแจ้งเตือนชัดเจน, test parser ผ่าน
 
 ---
 
@@ -100,12 +104,13 @@
 
 ---
 
-## Phase 7 — PDF Statement + สลิปโอนเงิน
-- [ ] รองรับ PDF statement ที่มีรหัสผ่าน (ผู้ใช้กรอกรหัส, ไม่เก็บรหัส)
+## Phase 7 — ธนาคารที่ 2 + สลิปโอนเงิน + R2
+- [x] ~~รองรับ PDF statement ที่มีรหัสผ่าน~~ → ย้ายไป Phase 3
 - [ ] เพิ่ม parser ธนาคารที่ 2
 - [ ] อัปโหลดรูปสลิป → AI อ่านข้อมูล (วันที่, จำนวนเงิน, ผู้รับ) → preview ก่อนบันทึก
 - [ ] เก็บไฟล์ต้นฉบับ (statement + สลิป) ใน Cloudflare R2 แบบ private + signed URL + ผู้ใช้ลบได้
-      (ถ้าต้องการให้ Phase 3 เก็บ CSV ด้วย ให้ย้ายงาน R2 ขึ้นมาทำก่อน)
+      (`imports.storageKey` เตรียมไว้แล้ว — ต้องขอ R2 credentials จากผู้ใช้)
+- [ ] ทดสอบ SCB parser กับ statement จริงของผู้ใช้ (fixture ตอนนี้จำลอง layout จากข้อมูลสาธารณะ)
 
 ---
 
