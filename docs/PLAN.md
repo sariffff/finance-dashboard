@@ -41,13 +41,13 @@
 
 ---
 
-## Phase 2 — Authentication
-- [ ] ติดตั้ง Better Auth + Drizzle adapter, generate ตาราง auth แล้ว migrate
-- [ ] หน้า `/sign-up`, `/sign-in`, ปุ่ม sign out
-- [ ] Protect ทุกหน้าใต้ `/dashboard` (middleware หรือ server-side check)
-- [ ] Helper `requireUser()` สำหรับ server actions / route handlers
-- [ ] **Demo account**: ปุ่ม "ลองใช้ด้วยบัญชีตัวอย่าง" ล็อกอินเข้าบัญชีที่มีข้อมูล seed ไว้
-- [ ] Test: ผู้ใช้ A query ข้อมูลของผู้ใช้ B ไม่ได้
+## Phase 2 — Authentication ✅
+- [x] ติดตั้ง Better Auth + Drizzle adapter, generate ตาราง auth แล้ว migrate
+- [x] หน้า `/sign-up`, `/sign-in`, ปุ่ม sign out
+- [x] Protect ทุกหน้าใต้ `/dashboard` — `src/proxy.ts` (เช็ค cookie คร่าว ๆ) + `requireUser()` (เช็คจริง)
+- [x] Helper `requireUser()` สำหรับ server actions / route handlers
+- [x] **Demo account**: ปุ่ม "ลองใช้ด้วยบัญชีตัวอย่าง" ล็อกอินเข้าบัญชีที่มีข้อมูล seed ไว้
+- [x] Test: ผู้ใช้ A query ข้อมูลของผู้ใช้ B ไม่ได้
 
 **Done when:** สมัคร/ล็อกอิน/ออกได้, เข้า `/dashboard` โดยไม่ล็อกอินแล้วถูก redirect, test authorization ผ่าน
 

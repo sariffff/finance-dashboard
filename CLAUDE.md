@@ -28,7 +28,7 @@ npm run dev                   # Next.js dev server
 npm run db:generate           # สร้าง migration จาก schema
 npm run db:migrate            # รัน migration
 npm run db:seed               # ใส่ข้อมูลตัวอย่าง + demo account
-npm run test                  # Vitest
+npm run test                  # Vitest (integration test ต้องเปิด docker db ก่อน)
 npm run lint && npm run typecheck
 ```
 PostgreSQL ใน Docker เปิดที่ **localhost:5433** (เครื่องนี้มี PostgreSQL ของ Windows ใช้ 5432 อยู่แล้ว)
@@ -38,6 +38,13 @@ PostgreSQL ใน Docker เปิดที่ **localhost:5433** (เครื�
 - **วันที่**: เก็บเป็น `date` / `timestamptz` สรุปยอดรายเดือนตาม timezone `Asia/Bangkok`
 - **Authorization**: ทุก query ต้อง filter ด้วย `userId` ของ session ปัจจุบัน
   ไม่มี RLS ช่วยแล้ว → ใช้ helper กลาง และต้องมี test ว่าผู้ใช้ A อ่านข้อมูลผู้ใช้ B ไม่ได้
+  - Query อยู่ใน `src/db/queries/*` รับ `userId` เป็น argument แรกเสมอ
+  - `userId` ต้องมาจาก `requireUser()` (`src/lib/dal.ts`) เท่านั้น ห้ามรับจาก client
+  - `src/proxy.ts` เป็นแค่ optimistic check (ดู cookie) — ห้ามพึ่งเป็นการตรวจสิทธิ์จริง
+- **Cache Components เปิดอยู่**: component ที่อ่าน session/cookies ต้องอยู่ใต้ `<Suspense>`
+  ห้าม await session ที่ top-level ของ layout
+- **Auth schema**: `src/db/auth-schema.ts` generate ด้วย
+  `npx auth@1.7.7 generate --config src/lib/auth.ts --output src/db/auth-schema.ts` — ห้ามแก้มือ
 - **Secrets**: อยู่ใน `.env` เท่านั้น ห้าม commit, ห้าม hardcode, อัปเดต `.env.example` เมื่อเพิ่มตัวแปรใหม่
 - **ไฟล์ statement / สลิปต้นฉบับ**: เก็บใน Cloudflare R2 แบบ private (ข้อมูลการเงินอ่อนไหว)
   bucket ห้าม public, เข้าถึงผ่าน signed URL อายุสั้นหลังเช็คเจ้าของไฟล์เท่านั้น, ผู้ใช้ลบไฟล์ของตัวเองได้
