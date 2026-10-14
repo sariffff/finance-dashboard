@@ -32,5 +32,26 @@ services:
       db:
         condition: service_healthy   # รอให้ database พร้อมก่อนค่อยเปิด
 
+  # ---------- RustFS: ที่เก็บไฟล์แบบ S3 (ใช้แทน Cloudflare R2 ตอนพัฒนา) ----------
+  # R2 กับ RustFS คุยด้วยภาษาเดียวกัน (S3 API) โค้ดจึงเหมือนกัน ต่างกันแค่ค่าใน .env
+  # (ใช้ RustFS แทน MinIO เพราะ MinIO เลิกแจก Docker image รุ่นฟรีไปแล้ว)
+  storage:
+    image: rustfs/rustfs:1.0.1    # ล็อกเวอร์ชันไว้ จะได้ไม่เปลี่ยนเองตอนดึง image ใหม่
+    container_name: finance-storage
+    restart: unless-stopped
+    environment:
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY_ID}       # ใช้ค่าเดียวกับที่แอปใช้เชื่อมต่อ (จาก .env)
+      RUSTFS_SECRET_KEY: ${S3_SECRET_ACCESS_KEY}
+    ports:
+      - "9000:9000"               # S3 API ที่แอปใช้อัปโหลด/ดาวน์โหลดไฟล์
+      - "9001:9001"               # หน้าเว็บดูไฟล์ เปิดที่ http://localhost:9001
+    volumes:
+      - storagedata:/data         # ไฟล์ที่อัปโหลดเก็บใน volume เหมือน database
+
 volumes:
   pgdata:
+  storagedata:
