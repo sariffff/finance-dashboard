@@ -1,33 +1,18 @@
 // Renders the fictional statement in src/lib/parsers/__fixtures__/
 // scb-sample-data.ts into a password-protected PDF that mimics the layout of
-// an SCB e-Statement. Run with: npm run fixtures:scb
+// an SCB e-Statement. Run with: npm run fixtures
 
-import { createWriteStream } from "node:fs";
-import { createRequire } from "node:module";
 import { resolve } from "node:path";
 
-import PDFDocument from "pdfkit";
-
-import { satangToDecimalString } from "../src/lib/money";
 import {
   FIXTURE_PASSWORD,
   OPENING_BALANCE_SATANG,
   fixtureRowsWithBalance,
 } from "../src/lib/parsers/__fixtures__/scb-sample-data";
 
-const require = createRequire(import.meta.url);
-const fontDir = "@fontsource/noto-sans-thai/files";
-const fonts = {
-  thai: require.resolve(`${fontDir}/noto-sans-thai-thai-400-normal.woff`),
-  latin: require.resolve(`${fontDir}/noto-sans-thai-latin-400-normal.woff`),
-  thaiBold: require.resolve(`${fontDir}/noto-sans-thai-thai-700-normal.woff`),
-  latinBold: require.resolve(`${fontDir}/noto-sans-thai-latin-700-normal.woff`),
-};
+import { PAGE, createFixtureDoc, drawTableHeader, formatBaht, type FixtureColumn } from "./lib/fixture-pdf";
 
 const OUTPUT = resolve("src/lib/parsers/__fixtures__/scb-statement.pdf");
-
-// A4 landscape
-const PAGE = { width: 842, height: 595 };
 const ROW_HEIGHT = 16;
 const TABLE_TOP = 150;
 const TABLE_BOTTOM = 520;
@@ -42,42 +27,13 @@ const COLUMNS = {
   deposit: { x: 320, width: 85, label: ["ฝากเงิน/เข้าบัญชี", "Deposit"] },
   balance: { x: 415, width: 90, label: ["ยอดเงินคงเหลือ", "Balance"] },
   description: { x: 525, label: ["รายละเอียด", "Description"] },
-} as const;
+} satisfies Record<string, FixtureColumn>;
 
-const doc = new PDFDocument({
-  size: "A4",
-  layout: "landscape",
-  margin: 0,
-  autoFirstPage: false,
-  userPassword: FIXTURE_PASSWORD,
-  ownerPassword: "fixture-owner-password",
-  pdfVersion: "1.7",
-  info: { Title: "Fictional SCB statement for tests", Author: "finance-dashboard" },
+const fixture = createFixtureDoc(OUTPUT, {
+  password: FIXTURE_PASSWORD,
+  title: "Fictional SCB statement for tests",
 });
-doc.pipe(createWriteStream(OUTPUT));
-
-// The font files are split into Thai and Latin subsets, so draw each run of
-// text with the subset that has its glyphs.
-function write(text: string, x: number, y: number, bold = false) {
-  const runs = text.match(/[฀-๿]+|[^฀-๿]+/g) ?? [];
-  runs.forEach((run, index) => {
-    const thai = /[฀-๿]/.test(run);
-    doc.font(thai ? (bold ? fonts.thaiBold : fonts.thai) : bold ? fonts.latinBold : fonts.latin);
-    const continued = index < runs.length - 1;
-    if (index === 0) doc.text(run, x, y, { continued, lineBreak: false });
-    else doc.text(run, { continued, lineBreak: false });
-  });
-}
-
-function writeRight(text: string, x: number, width: number, y: number) {
-  doc.font(fonts.latin);
-  doc.text(text, x, y, { width, align: "right", lineBreak: false });
-}
-
-function formatBaht(satang: number): string {
-  const [whole, fraction] = satangToDecimalString(satang).split(".");
-  return `${Number(whole).toLocaleString("en-US")}.${fraction}`;
-}
+const { doc, write, writeRight } = fixture;
 
 function startPage(pageNumber: number) {
   doc.addPage();
@@ -88,21 +44,7 @@ function startPage(pageNumber: number) {
   write("ชื่อบัญชี: นาย ตัวอย่าง ทดสอบ   เลขที่บัญชี: xxx-x-x1234-x", 30, 70);
   write("รอบระหว่างวันที่ 01/09/2026 - 30/09/2026", 30, 86);
   write(`หน้า ${pageNumber}`, 760, 30);
-
-  doc.fontSize(8);
-  for (const [lineIndex, y] of [TABLE_TOP - 34, TABLE_TOP - 22].entries()) {
-    for (const column of Object.values(COLUMNS)) {
-      const label = column.label[lineIndex];
-      if ("width" in column) {
-        // Center amount headers over their right-aligned column.
-        doc.font(/[฀-๿]/.test(label) ? fonts.thaiBold : fonts.latinBold);
-        doc.text(label, column.x, y, { width: column.width, align: "center", lineBreak: false });
-      } else {
-        write(label, column.x, y, true);
-      }
-    }
-  }
-  doc.moveTo(30, TABLE_TOP - 6).lineTo(PAGE.width - 30, TABLE_TOP - 6).stroke();
+  drawTableHeader(fixture, COLUMNS, TABLE_TOP);
 }
 
 function endPage() {
