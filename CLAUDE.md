@@ -31,7 +31,7 @@ npm run db:seed               # ใส่ข้อมูลตัวอย่า
 npm run test                  # Vitest
 npm run lint && npm run typecheck
 ```
-(script `db:*`, `typecheck`, `test` ต้องเพิ่มใน package.json ใน Phase 1)
+PostgreSQL ใน Docker เปิดที่ **localhost:5433** (เครื่องนี้มี PostgreSQL ของ Windows ใช้ 5432 อยู่แล้ว)
 
 ## กฎสำคัญ
 - **เงิน**: เก็บเป็น `numeric(14,2)` ห้ามใช้ float — ใน TypeScript จัดการเป็น string หรือหน่วยสตางค์ (integer)
