@@ -10,6 +10,12 @@ const envSchema = z.object({
   // Its password is effectively public — it must only ever hold seed data.
   DEMO_USER_EMAIL: z.email(),
   DEMO_USER_PASSWORD: z.string().min(8),
+  // Optional: without it, imports are categorized by rules only.
+  // An empty value (as copied from .env.example) counts as not set.
+  ANTHROPIC_API_KEY: z
+    .string()
+    .optional()
+    .transform((value) => value || undefined),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
