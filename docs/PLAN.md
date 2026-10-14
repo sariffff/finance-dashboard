@@ -110,13 +110,18 @@
 
 ---
 
-## Phase 7 — ธนาคารที่ 2 + สลิปโอนเงิน + R2
+## Phase 7 — ธนาคารที่ 2 + สลิปโอนเงิน + ที่เก็บไฟล์ ✅
 - [x] ~~รองรับ PDF statement ที่มีรหัสผ่าน~~ → ย้ายไป Phase 3
-- [ ] เพิ่ม parser ธนาคารที่ 2
-- [ ] อัปโหลดรูปสลิป → AI อ่านข้อมูล (วันที่, จำนวนเงิน, ผู้รับ) → preview ก่อนบันทึก
-- [ ] เก็บไฟล์ต้นฉบับ (statement + สลิป) ใน Cloudflare R2 แบบ private + signed URL + ผู้ใช้ลบได้
-      (`imports.storageKey` เตรียมไว้แล้ว — ต้องขอ R2 credentials จากผู้ใช้)
-- [ ] ทดสอบ SCB parser กับ statement จริงของผู้ใช้ (fixture ตอนนี้จำลอง layout จากข้อมูลสาธารณะ)
+- [x] แยกตัวอ่านตารางกลาง (`src/lib/parsers/table.ts`) — ธนาคารใหม่ = ค่าตั้ง layout
+- [x] เพิ่ม parser ธนาคารที่ 2: **KBANK** (DD-MM-YY, ช่องเงินช่องเดียว + ยอดคงเหลือบอกทิศทาง) + fixture ปลอม
+- [x] อัปโหลดรูปสลิป → AI อ่านข้อมูล (วันที่, จำนวนเงิน, ผู้รับ) → ผู้ใช้ตรวจ/แก้ → บันทึก (ไม่มี AI = กรอกเองจากรูป)
+- [x] กันนับซ้ำข้ามแหล่ง: สลิป ↔ บรรทัดใน statement (บัญชี + วันที่ + ทิศทาง + จำนวนเงิน)
+- [x] เก็บไฟล์ต้นฉบับ (statement + สลิป) แบบ private + signed URL 60 วินาที + ผู้ใช้ลบได้
+      ตอนพัฒนาใช้ **RustFS** ใน Docker (MinIO เลิกแจก image รุ่นฟรีแล้ว) — R2 ใช้ S3 API เดียวกัน เปลี่ยนแค่ `.env`
+- [x] เลือกโมเดล Claude ได้ใน `.env` (`AI_MODEL`, `AI_MODEL_CATEGORIZE/SLIP/INSIGHTS`)
+- [ ] ทดสอบ parser SCB/KBANK กับ statement จริง (fixture จำลอง layout จากข้อมูลสาธารณะ)
+- [ ] ทดสอบอ่านสลิปด้วย Claude จริง (ต้องมี `ANTHROPIC_API_KEY`)
+- [ ] ย้ายที่เก็บไฟล์ไป Cloudflare R2 ตอน deploy (ต้องมีบัญชี Cloudflare)
 
 ---
 

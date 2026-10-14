@@ -22,7 +22,7 @@ Personal Finance Dashboard: ผู้ใช้อัปโหลด statement �
 
 ## Commands
 ```bash
-docker compose up -d          # เปิด PostgreSQL + Adminer (http://localhost:8080, server = db)
+docker compose up -d          # เปิด PostgreSQL + Adminer (http://localhost:8080, server = db) + RustFS ที่เก็บไฟล์ (http://localhost:9001)
 docker compose ps             # เช็คสถานะ container
 npm run dev                   # Next.js dev server
 npm run db:generate           # สร้าง migration จาก schema
