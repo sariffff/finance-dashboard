@@ -15,18 +15,23 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getBankAccount } from "@/db/queries/bank-accounts";
+import { db } from "@/db";
 import {
   countUncategorizedInImport,
+  findCrossSourceDuplicates,
   findExistingDedupeHashes,
   getImport,
 } from "@/db/queries/imports";
+import { isAiConfigured } from "@/lib/ai/config";
 import { requireUser } from "@/lib/dal";
 import { formatDate } from "@/lib/format";
 import { computeDedupeHashes } from "@/lib/import/dedupe";
 import { formatSatang } from "@/lib/money";
+import { emptySlipDraft } from "@/lib/slips/reader";
 import { cn } from "@/lib/utils";
 
-import { deleteImportFileAction, recategorizeImportAction } from "../actions";
+import { cancelImportAction, deleteImportFileAction, recategorizeImportAction } from "../actions";
+import { SlipConfirmForm } from "../slip-forms";
 import { ConfirmImportButtons } from "./confirm-buttons";
 
 export const metadata: Metadata = { title: "ตรวจรายการ — Finance Dashboard" };
@@ -84,7 +89,9 @@ async function ImportPreview({ params }: { params: Promise<{ id: string }> }) {
         {found.storageKey && (
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <span className="text-muted-foreground">
-              เก็บไฟล์ต้นฉบับไว้แบบส่วนตัว (ยังล็อกด้วยรหัสผ่านของธนาคาร)
+              {found.fileType === "slip"
+                ? "เก็บรูปสลิปไว้แบบส่วนตัว"
+                : "เก็บไฟล์ต้นฉบับไว้แบบส่วนตัว (ยังล็อกด้วยรหัสผ่านของธนาคาร)"}
             </span>
             <a
               href={`/api/imports/${found.id}/file`}
@@ -114,12 +121,66 @@ async function ImportPreview({ params }: { params: Promise<{ id: string }> }) {
     );
   }
 
+  if (found.fileType === "slip") {
+    const draft = found.preview.slip;
+    return (
+      <>
+        <header className="grid gap-1">
+          <h1 className="text-2xl font-semibold">ตรวจสลิปก่อนบันทึก</h1>
+          <p className="text-sm text-muted-foreground">
+            {found.fileName} → {account?.nickname}
+          </p>
+        </header>
+        <div className="grid gap-6 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:items-start">
+          {found.storageKey ? (
+            // eslint-disable-next-line @next/next/no-img-element -- a private, signed, per-user image
+            <img
+              src={`/api/imports/${found.id}/file`}
+              alt="รูปสลิปที่อัปโหลด"
+              className="w-full rounded-xl border object-contain"
+            />
+          ) : (
+            <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
+              ไม่ได้เก็บรูปไว้ (ยังไม่ได้ตั้งค่าที่เก็บไฟล์)
+            </p>
+          )}
+          <div className="grid gap-4 rounded-xl border p-5">
+            <p className="text-sm text-muted-foreground">
+              {draft?.readByAi
+                ? "AI อ่านข้อมูลจากสลิปให้แล้ว กรุณาตรวจให้ถูกต้องก่อนบันทึก"
+                : isAiConfigured()
+                  ? "อ่านข้อมูลจากรูปไม่ได้ กรุณากรอกเองจากรูปสลิป"
+                  : "ยังไม่ได้ตั้งค่า AI กรุณากรอกข้อมูลเองจากรูปสลิป"}
+            </p>
+            <SlipConfirmForm
+              importId={found.id}
+              draft={draft ?? emptySlipDraft()}
+            />
+            <form action={cancelImportAction.bind(null, found.id)}>
+              <Button type="submit" variant="ghost" className="w-full">
+                ยกเลิก
+              </Button>
+            </form>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   const { transactions, warnings } = found.preview;
   const hashes = computeDedupeHashes(found.bankAccountId, transactions);
-  const existing = await findExistingDedupeHashes(user.id, hashes);
+  const [existing, fromSlips] = await Promise.all([
+    findExistingDedupeHashes(user.id, hashes),
+    findCrossSourceDuplicates(db, user.id, {
+      bankAccountId: found.bankAccountId,
+      fileType: found.fileType,
+      rows: transactions,
+    }),
+  ]);
   const rows = transactions.map((tx, index) => ({
     ...tx,
-    duplicate: existing.has(hashes[index]),
+    duplicate: existing.has(hashes[index]) || fromSlips.has(index),
+    fromSlip: fromSlips.has(index),
   }));
 
   const fresh = rows.filter((row) => !row.duplicate);
@@ -183,7 +244,7 @@ async function ImportPreview({ params }: { params: Promise<{ id: string }> }) {
                   {row.description}
                   {row.duplicate && (
                     <Badge variant="outline" className="ml-2">
-                      ซ้ำ
+                      {row.fromSlip ? "มีจากสลิปแล้ว" : "ซ้ำ"}
                     </Badge>
                   )}
                 </TableCell>

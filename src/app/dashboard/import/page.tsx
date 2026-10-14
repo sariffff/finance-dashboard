@@ -12,11 +12,13 @@ import {
 } from "@/components/ui/card";
 import { listBankAccounts } from "@/db/queries/bank-accounts";
 import { listRecentImports } from "@/db/queries/imports";
+import { isAiConfigured } from "@/lib/ai/config";
 import { requireUser } from "@/lib/dal";
 import { formatDateTime } from "@/lib/format";
 import { getParser, parsers } from "@/lib/parsers";
 
 import { BankAccountForm, UploadStatementForm } from "./forms";
+import { SlipUploadForm } from "./slip-forms";
 
 export const metadata: Metadata = { title: "นำเข้า statement — Finance Dashboard" };
 
@@ -65,6 +67,20 @@ async function ImportContent() {
           </CardHeader>
           <CardContent>
             <UploadStatementForm accounts={accountOptions} />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {accounts.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>อัปโหลดสลิปโอนเงิน</CardTitle>
+            <CardDescription>
+              บันทึกรายการทันทีโดยไม่ต้องรอ statement — ถ้าภายหลังนำเข้า statement ที่มีรายการเดียวกัน ระบบจะไม่นับซ้ำ
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SlipUploadForm accounts={accountOptions} aiEnabled={isAiConfigured()} />
           </CardContent>
         </Card>
       ) : null}
