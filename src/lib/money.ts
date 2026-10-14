@@ -36,6 +36,14 @@ export function satangToDecimalString(satang: number): string {
   return `${sign}${baht}.${rest}`;
 }
 
+/** Integer satang as "36,712.34" (no currency sign), built from digits only. */
+export function formatBahtNumber(satang: number): string {
+  const [whole, fraction] = satangToDecimalString(satang).split(".");
+  const sign = whole.startsWith("-") ? "-" : "";
+  const digits = sign ? whole.slice(1) : whole;
+  return `${sign}${digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${fraction}`;
+}
+
 const thbFormatter = new Intl.NumberFormat("th-TH", {
   style: "currency",
   currency: "THB",
