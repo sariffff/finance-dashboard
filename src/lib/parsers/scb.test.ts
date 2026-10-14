@@ -8,8 +8,9 @@ import {
   FIXTURE_PASSWORD,
   expectedTransactions,
 } from "./__fixtures__/scb-sample-data";
+import { normalizeThai } from "@/lib/thai";
+
 import {
-  normalizeThai,
   parseScbPages,
   parseStatementDate,
   scbParser,

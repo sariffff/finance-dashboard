@@ -6,6 +6,7 @@ import {
   type PdfLine,
   type PdfTextItem,
 } from "@/lib/pdf";
+import { normalizeThai } from "@/lib/thai";
 
 import {
   StatementFormatError,
@@ -67,21 +68,6 @@ const TIME_PATTERN = /^(\d{1,2}):(\d{2})(?::\d{2})?$/;
 const BROUGHT_FORWARD = /ยกมา|brought forward/i;
 const END_OF_TABLE = /www\.scb\.co\.th|^total\b|^รวมทั้งสิ้น/i;
 const COLUMN_TOLERANCE = 2;
-
-/**
- * Text pulled out of PDFs often mangles SARA AM (ำ): split into NIKHAHIT +
- * SARA AA (sometimes with a tone mark in between), or followed by a stray
- * SARA AA when the font draws it as two glyphs. Put it back so descriptions
- * match what users type and what category rules look for.
- */
-export function normalizeThai(text: string): string {
-  return text
-    .normalize("NFC")
-    .replace(/ํ([่-๋]?)า/g, "$1ำ")
-    .replace(/ำา/g, "ำ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 /**
  * Statement dates are DD/MM/YY or DD/MM/YYYY, in either the Gregorian or
