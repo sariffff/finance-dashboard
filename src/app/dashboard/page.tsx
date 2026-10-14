@@ -26,6 +26,7 @@ import { addMonths, currentMonth, formatMonth, formatMonthShort, isMonth } from 
 import { cn } from "@/lib/utils";
 
 import { CategorySpendingChart, MonthlyTrendChart } from "./charts";
+import { InsightCard, InsightCardSkeleton } from "./insight-card";
 import { MonthPicker } from "./month-picker";
 
 export const metadata: Metadata = { title: "Dashboard — Finance Dashboard" };
@@ -129,6 +130,10 @@ async function DashboardContent({
         />
         <StatTile label="คงเหลือ" value={`${net < 0 ? "−" : ""}${formatSatang(Math.abs(net))}`} />
       </dl>
+
+      <Suspense fallback={<InsightCardSkeleton />}>
+        <InsightCard userId={user.id} month={month} />
+      </Suspense>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
