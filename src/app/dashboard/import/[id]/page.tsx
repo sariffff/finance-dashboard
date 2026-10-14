@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -15,13 +15,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getBankAccount } from "@/db/queries/bank-accounts";
-import { findExistingDedupeHashes, getImport } from "@/db/queries/imports";
+import {
+  countUncategorizedInImport,
+  findExistingDedupeHashes,
+  getImport,
+} from "@/db/queries/imports";
 import { requireUser } from "@/lib/dal";
 import { formatDate } from "@/lib/format";
 import { computeDedupeHashes } from "@/lib/import/dedupe";
 import { formatSatang } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
+import { recategorizeImportAction } from "../actions";
 import { ConfirmImportButtons } from "./confirm-buttons";
 
 export const metadata: Metadata = { title: "ตรวจรายการ — Finance Dashboard" };
@@ -49,6 +54,7 @@ async function ImportPreview({ params }: { params: Promise<{ id: string }> }) {
   const account = await getBankAccount(user.id, found.bankAccountId);
 
   if (found.status !== "pending" || !found.preview) {
+    const uncategorized = await countUncategorizedInImport(user.id, found.id);
     return (
       <section className="grid gap-4 rounded-xl border p-6">
         <h1 className="text-2xl font-semibold">บันทึกเรียบร้อย</h1>
@@ -61,8 +67,25 @@ async function ImportPreview({ params }: { params: Promise<{ id: string }> }) {
             <> · ข้าม {found.duplicateCount} รายการที่มีอยู่แล้ว</>
           )}
         </p>
+        {found.rowCount > 0 && (
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span>
+              จัดหมวดอัตโนมัติแล้ว {found.rowCount - uncategorized} จาก {found.rowCount} รายการ
+            </span>
+            {uncategorized > 0 && (
+              <form action={recategorizeImportAction.bind(null, found.id)}>
+                <Button type="submit" variant="outline" size="sm">
+                  ลองจัดหมวดที่เหลืออีกครั้ง
+                </Button>
+              </form>
+            )}
+          </div>
+        )}
         <div className="flex flex-wrap gap-3">
-          <Link href="/dashboard" className={buttonVariants()}>
+          <Link href="/dashboard/transactions" className={buttonVariants()}>
+            ดูและแก้หมวดหมู่
+          </Link>
+          <Link href="/dashboard" className={buttonVariants({ variant: "outline" })}>
             ไปที่ Dashboard
           </Link>
           <Link href="/dashboard/import" className={buttonVariants({ variant: "outline" })}>

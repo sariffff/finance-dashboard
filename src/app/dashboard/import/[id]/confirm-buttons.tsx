@@ -23,7 +23,7 @@ export function ConfirmImportButtons({
       <div className="flex flex-wrap gap-3">
         <form action={confirm}>
           <Button type="submit" size="lg" disabled={confirming || newCount === 0}>
-            {confirming ? "กำลังบันทึก…" : `บันทึก ${newCount} รายการ`}
+            {confirming ? "กำลังบันทึกและจัดหมวด…" : `บันทึก ${newCount} รายการ`}
           </Button>
         </form>
         <form action={cancelImportAction.bind(null, importId)}>

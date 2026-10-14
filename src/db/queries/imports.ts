@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, lt } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, lt } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -189,4 +189,22 @@ export async function cancelImport(userId: string, importId: string): Promise<bo
     )
     .returning({ id: imports.id });
   return deleted.length > 0;
+}
+
+/** How many of an import's transactions still have no category. */
+export async function countUncategorizedInImport(
+  userId: string,
+  importId: string,
+): Promise<number> {
+  const [row] = await db
+    .select({ value: count() })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.importId, importId),
+        isNull(transactions.categoryId),
+      ),
+    );
+  return row.value;
 }

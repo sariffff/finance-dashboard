@@ -36,6 +36,9 @@ async function DashboardContent() {
           <Link href="/dashboard/import" className={buttonVariants()}>
             นำเข้า statement
           </Link>
+          <Link href="/dashboard/transactions" className={buttonVariants({ variant: "outline" })}>
+            รายการธุรกรรม
+          </Link>
           <form action={signOutAction}>
             <Button type="submit" variant="outline">
               ออกจากระบบ

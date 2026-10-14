@@ -11,6 +11,7 @@ import {
   confirmImport,
   createPendingImport,
 } from "@/db/queries/imports";
+import { categorizeUncategorized, getDefaultCategorizer } from "@/lib/categorize";
 import { requireUser } from "@/lib/dal";
 import { bankCodes, getParser } from "@/lib/parsers";
 import { StatementFormatError } from "@/lib/parsers/types";
@@ -134,7 +135,24 @@ export async function confirmImportAction(importId: string): Promise<FormState> 
     }
     throw error;
   }
+
+  // The transactions are saved either way; categorizing is best effort and
+  // can be retried from the import page.
+  try {
+    await categorizeUncategorized(user.id, { importId: id, categorizer: getDefaultCategorizer() });
+  } catch (error) {
+    console.error("Categorization after import failed", error);
+  }
   redirect(`/dashboard/import/${id}`);
+}
+
+export async function recategorizeImportAction(importId: string): Promise<void> {
+  const user = await requireUser();
+  await categorizeUncategorized(user.id, {
+    importId: importIdSchema.parse(importId),
+    categorizer: getDefaultCategorizer(),
+  });
+  refresh();
 }
 
 export async function cancelImportAction(importId: string): Promise<void> {
