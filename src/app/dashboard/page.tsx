@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { signOutAction } from "@/app/(auth)/actions";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { listBankAccounts } from "@/db/queries/bank-accounts";
 import { requireUser } from "@/lib/dal";
 
@@ -31,18 +32,23 @@ async function DashboardContent() {
           <h1 className="text-2xl font-semibold">สวัสดี, {user.name}</h1>
           <p className="text-sm text-muted-foreground">{user.email}</p>
         </div>
-        <form action={signOutAction}>
-          <Button type="submit" variant="outline">
-            ออกจากระบบ
-          </Button>
-        </form>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/dashboard/import" className={buttonVariants()}>
+            นำเข้า statement
+          </Link>
+          <form action={signOutAction}>
+            <Button type="submit" variant="outline">
+              ออกจากระบบ
+            </Button>
+          </form>
+        </div>
       </header>
 
       <section className="rounded-xl border p-6">
         <h2 className="font-medium">บัญชีธนาคาร</h2>
         {accounts.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">
-            ยังไม่มีบัญชีธนาคาร — การนำเข้า statement จะเปิดใช้ใน Phase 3
+            ยังไม่มีบัญชีธนาคาร — เพิ่มได้ที่หน้านำเข้า statement
           </p>
         ) : (
           <ul className="mt-2 grid gap-1 text-sm">
