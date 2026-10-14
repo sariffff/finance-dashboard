@@ -1,11 +1,12 @@
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 
 import { client, db } from "@/db";
 import { env } from "@/env";
 import { auth } from "@/lib/auth";
+import { categorizeUncategorized } from "@/lib/categorize";
 
 import { createBankAccount, listBankAccounts } from "./queries/bank-accounts";
-import { categories, user, type NewCategory } from "./schema";
+import { categories, categoryRules, user, type NewCategory } from "./schema";
 
 // Built-in categories shared by every user (userId = null).
 // `icon` is a lucide-react icon name, used by shadcn/ui in the UI.
@@ -23,6 +24,59 @@ const defaultCategories: NewCategory[] = [
   { name: "เงินเดือน", icon: "wallet", color: "#22c55e", kind: "income" },
   { name: "รายได้อื่น", icon: "coins", color: "#84cc16", kind: "income" },
 ];
+
+// Built-in rules for common Thai merchants, so they never need the AI.
+// Patterns are matched case-insensitively against the description; the
+// longest matching pattern wins (e.g. "grab food" before "grab").
+const systemRules: { pattern: string; category: string }[] = [
+  { pattern: "grab food", category: "อาหารและเครื่องดื่ม" },
+  { pattern: "grabfood", category: "อาหารและเครื่องดื่ม" },
+  { pattern: "line man", category: "อาหารและเครื่องดื่ม" },
+  { pattern: "foodpanda", category: "อาหารและเครื่องดื่ม" },
+  { pattern: "robinhood", category: "อาหารและเครื่องดื่ม" },
+  { pattern: "7-eleven", category: "อาหารและเครื่องดื่ม" },
+  { pattern: "grab", category: "เดินทาง" },
+  { pattern: "bolt", category: "เดินทาง" },
+  { pattern: "bts", category: "เดินทาง" },
+  { pattern: "mrt", category: "เดินทาง" },
+  { pattern: "ptt station", category: "เดินทาง" },
+  { pattern: "shopee", category: "ช้อปปิ้ง" },
+  { pattern: "lazada", category: "ช้อปปิ้ง" },
+  { pattern: "การไฟฟ้า", category: "บิลและสาธารณูปโภค" },
+  { pattern: "การประปา", category: "บิลและสาธารณูปโภค" },
+  { pattern: "true move", category: "บิลและสาธารณูปโภค" },
+  { pattern: "netflix", category: "บันเทิง" },
+  { pattern: "spotify", category: "บันเทิง" },
+  { pattern: "major cineplex", category: "บันเทิง" },
+  { pattern: "โรงพยาบาล", category: "สุขภาพ" },
+  { pattern: "เงินเดือน", category: "เงินเดือน" },
+  { pattern: "ดอกเบี้ย", category: "รายได้อื่น" },
+];
+
+async function seedSystemRules() {
+  const builtIn = await db
+    .select({ id: categories.id, name: categories.name })
+    .from(categories)
+    .where(isNull(categories.userId));
+  const idByName = new Map(builtIn.map((c) => [c.name, c.id]));
+
+  const inserted = await db
+    .insert(categoryRules)
+    .values(
+      systemRules.map(({ pattern, category }) => {
+        const categoryId = idByName.get(category);
+        if (!categoryId) throw new Error(`Unknown category in system rule: ${category}`);
+        return { userId: null, pattern, matchType: "contains" as const, categoryId, source: "system" as const };
+      }),
+    )
+    .onConflictDoNothing()
+    .returning({ id: categoryRules.id });
+
+  console.log(
+    `System rules: ${inserted.length} inserted, ` +
+      `${systemRules.length - inserted.length} already present`,
+  );
+}
 
 async function seedCategories() {
   // Safe to run repeatedly: the (userId, name) unique constraint skips
@@ -60,7 +114,11 @@ async function seedDemoUser() {
     ).user.id;
   console.log(`Demo user: ${existing ? "already present" : "created"}`);
 
-  // Transactions for the demo account arrive with the import phases.
+  // Categorize whatever the demo account already holds, by rules only:
+  // seeding should never spend money on API calls.
+  const stats = await categorizeUncategorized(demoUserId, { categorizer: null });
+  if (stats.byRule > 0) console.log(`Demo transactions categorized by rule: ${stats.byRule}`);
+
   const accounts = await listBankAccounts(demoUserId);
   if (accounts.length === 0) {
     await createBankAccount(demoUserId, {
@@ -74,6 +132,7 @@ async function seedDemoUser() {
 async function main() {
   try {
     await seedCategories();
+    await seedSystemRules();
     await seedDemoUser();
   } finally {
     await client.end();
