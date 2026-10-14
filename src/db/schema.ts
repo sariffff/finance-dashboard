@@ -15,7 +15,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-import type { ParsedStatement } from "@/lib/parsers/types";
+import type { ImportPreview } from "@/lib/import/types";
 
 import { user } from "./auth-schema";
 
@@ -89,7 +89,7 @@ export const imports = pgTable(
     status: importStatus("status").notNull().default("pending"),
     // Parsed rows shown on the preview page. Only kept while pending;
     // cleared once the import is confirmed.
-    preview: jsonb("preview").$type<ParsedStatement>(),
+    preview: jsonb("preview").$type<ImportPreview>(),
     rowCount: integer("row_count").notNull().default(0),
     duplicateCount: integer("duplicate_count").notNull().default(0),
     createdAt: createdAt(),
