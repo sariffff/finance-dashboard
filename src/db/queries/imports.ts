@@ -41,17 +41,6 @@ export async function createPendingImport(
       );
     if (!account) throw new ImportNotFoundError("Bank account not found");
 
-    // Previews hold financial data; don't keep abandoned ones around.
-    await tx
-      .delete(imports)
-      .where(
-        and(
-          eq(imports.userId, userId),
-          eq(imports.status, "pending"),
-          lt(imports.createdAt, new Date(Date.now() - PENDING_TTL_MS)),
-        ),
-      );
-
     const [created] = await tx
       .insert(imports)
       .values({
@@ -66,6 +55,36 @@ export async function createPendingImport(
       .returning();
     return created;
   });
+}
+
+/**
+ * Previews hold financial data; don't keep abandoned ones around. Returns
+ * the storage keys of their original files so the caller can delete them.
+ */
+export async function deleteStalePendingImports(userId: string): Promise<string[]> {
+  const deleted = await db
+    .delete(imports)
+    .where(
+      and(
+        eq(imports.userId, userId),
+        eq(imports.status, "pending"),
+        lt(imports.createdAt, new Date(Date.now() - PENDING_TTL_MS)),
+      ),
+    )
+    .returning({ storageKey: imports.storageKey });
+  return deleted.flatMap((row) => (row.storageKey ? [row.storageKey] : []));
+}
+
+/** Record (or clear, with null) where an import's original file is stored. */
+export async function setImportStorageKey(
+  userId: string,
+  importId: string,
+  storageKey: string | null,
+): Promise<void> {
+  await db
+    .update(imports)
+    .set({ storageKey })
+    .where(and(eq(imports.userId, userId), eq(imports.id, importId)));
 }
 
 export async function getImport(
@@ -176,9 +195,12 @@ export async function confirmImport(
   });
 }
 
-/** Discard a preview the user doesn't want to save. */
-export async function cancelImport(userId: string, importId: string): Promise<boolean> {
-  const deleted = await db
+/**
+ * Discard a preview the user doesn't want to save. Returns the deleted
+ * import (so its stored file can be removed too), or undefined.
+ */
+export async function cancelImport(userId: string, importId: string) {
+  const [deleted] = await db
     .delete(imports)
     .where(
       and(
@@ -187,8 +209,8 @@ export async function cancelImport(userId: string, importId: string): Promise<bo
         eq(imports.status, "pending"),
       ),
     )
-    .returning({ id: imports.id });
-  return deleted.length > 0;
+    .returning({ id: imports.id, storageKey: imports.storageKey });
+  return deleted;
 }
 
 /** How many of an import's transactions still have no category. */

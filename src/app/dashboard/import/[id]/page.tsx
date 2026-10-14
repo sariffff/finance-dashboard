@@ -26,7 +26,7 @@ import { computeDedupeHashes } from "@/lib/import/dedupe";
 import { formatSatang } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
-import { recategorizeImportAction } from "../actions";
+import { deleteImportFileAction, recategorizeImportAction } from "../actions";
 import { ConfirmImportButtons } from "./confirm-buttons";
 
 export const metadata: Metadata = { title: "ตรวจรายการ — Finance Dashboard" };
@@ -79,6 +79,24 @@ async function ImportPreview({ params }: { params: Promise<{ id: string }> }) {
                 </Button>
               </form>
             )}
+          </div>
+        )}
+        {found.storageKey && (
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span className="text-muted-foreground">
+              เก็บไฟล์ต้นฉบับไว้แบบส่วนตัว (ยังล็อกด้วยรหัสผ่านของธนาคาร)
+            </span>
+            <a
+              href={`/api/imports/${found.id}/file`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              ดาวน์โหลด
+            </a>
+            <form action={deleteImportFileAction.bind(null, found.id)}>
+              <Button type="submit" variant="ghost" size="sm">
+                ลบไฟล์ต้นฉบับ
+              </Button>
+            </form>
           </div>
         )}
         <div className="flex flex-wrap gap-3">

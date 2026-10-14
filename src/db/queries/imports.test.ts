@@ -85,10 +85,10 @@ describe("statement import", () => {
 
     expect(await getImport(other.id, created.id)).toBeUndefined();
     await expect(confirmImport(other.id, created.id)).rejects.toThrow(ImportNotFoundError);
-    expect(await cancelImport(other.id, created.id)).toBe(false);
+    expect(await cancelImport(other.id, created.id)).toBeUndefined();
     expect(await findExistingDedupeHashes(other.id, ["anything"])).toEqual(new Set());
 
-    expect(await cancelImport(owner.id, created.id)).toBe(true);
+    expect(await cancelImport(owner.id, created.id)).toMatchObject({ id: created.id });
     expect(await getImport(owner.id, created.id)).toBeUndefined();
   });
 

@@ -10,12 +10,16 @@ import {
   cancelImport,
   confirmImport,
   createPendingImport,
+  deleteStalePendingImports,
+  getImport,
+  setImportStorageKey,
 } from "@/db/queries/imports";
 import { categorizeUncategorized, getDefaultCategorizer } from "@/lib/categorize";
 import { requireUser } from "@/lib/dal";
 import { bankCodes, getParser } from "@/lib/parsers";
 import { StatementFormatError } from "@/lib/parsers/types";
 import { PdfPasswordError } from "@/lib/pdf";
+import { deleteFile, importFileKey, isStorageConfigured, putFile } from "@/lib/storage";
 
 export type FormState = {
   error?: string;
@@ -102,6 +106,7 @@ export async function uploadStatementAction(
       statement,
     });
     importId = created.id;
+    await storeOriginalFile(user.id, importId, data);
   } catch (error) {
     if (error instanceof PdfPasswordError) {
       return {
@@ -120,6 +125,26 @@ export async function uploadStatementAction(
   }
 
   redirect(`/dashboard/import/${importId}`);
+}
+
+/**
+ * Keep the original statement in private storage. The PDF is stored as
+ * uploaded, still locked with the bank's password (which we never keep).
+ * Storage is best effort: an import works without it.
+ */
+async function storeOriginalFile(userId: string, importId: string, data: Uint8Array) {
+  if (!isStorageConfigured()) return;
+  try {
+    const key = importFileKey(userId, importId, "pdf");
+    await putFile(key, data, "application/pdf");
+    await setImportStorageKey(userId, importId, key);
+
+    for (const staleKey of await deleteStalePendingImports(userId)) {
+      await deleteFile(staleKey);
+    }
+  } catch (error) {
+    console.error("Storing the original statement failed", error);
+  }
 }
 
 const importIdSchema = z.uuid();
@@ -157,6 +182,18 @@ export async function recategorizeImportAction(importId: string): Promise<void> 
 
 export async function cancelImportAction(importId: string): Promise<void> {
   const user = await requireUser();
-  await cancelImport(user.id, importIdSchema.parse(importId));
+  const cancelled = await cancelImport(user.id, importIdSchema.parse(importId));
+  if (cancelled?.storageKey) await deleteFile(cancelled.storageKey);
   redirect("/dashboard/import");
+}
+
+/** The user can remove the stored original at any time; the transactions stay. */
+export async function deleteImportFileAction(importId: string): Promise<void> {
+  const user = await requireUser();
+  const found = await getImport(user.id, importIdSchema.parse(importId));
+  if (found?.storageKey) {
+    await deleteFile(found.storageKey);
+    await setImportStorageKey(user.id, found.id, null);
+  }
+  refresh();
 }

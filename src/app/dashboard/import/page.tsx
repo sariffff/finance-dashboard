@@ -72,7 +72,9 @@ async function ImportContent() {
       <Card>
         <CardHeader>
           <CardTitle>{accounts.length > 0 ? "เพิ่มบัญชีธนาคาร" : "เริ่มจากเพิ่มบัญชีธนาคาร"}</CardTitle>
-          <CardDescription>ตอนนี้รองรับ statement ของ SCB</CardDescription>
+          <CardDescription>
+            รองรับ statement PDF ของ {banks.map((bank) => bank.name).join(", ")}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <BankAccountForm banks={banks} />

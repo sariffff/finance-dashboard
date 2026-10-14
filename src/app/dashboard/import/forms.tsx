@@ -76,7 +76,7 @@ export function UploadStatementForm({ accounts }: { accounts: AccountOption[] })
         label="ไฟล์ statement (PDF)"
         htmlFor="file"
         errors={state.fieldErrors?.file}
-        hint="e-Statement ที่ได้รับทางอีเมลจากแอป SCB EASY ขนาดไม่เกิน 5MB"
+        hint="e-Statement จากแอปธนาคาร (เช่น SCB EASY, K PLUS) ขนาดไม่เกิน 5MB"
       >
         <Input id="file" name="file" type="file" accept="application/pdf,.pdf" required />
       </Field>
