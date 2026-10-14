@@ -1,0 +1,124 @@
+# CI: ทุก push และ pull request เข้า main จะรัน lint, typecheck, test และ build
+# test ของเราใช้ database และที่เก็บไฟล์จริง จึงเปิด PostgreSQL กับ RustFS เป็น
+# "service container" ให้ระหว่างรัน (เหมือน docker compose ในเครื่อง)
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# push ใหม่ใน branch เดียวกันยกเลิกรอบเก่าที่ยังรันไม่เสร็จ
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      db:
+        image: postgres:17
+        env:
+          POSTGRES_USER: finance
+          POSTGRES_PASSWORD: finance-ci
+          POSTGRES_DB: finance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U finance -d finance"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      storage:
+        image: rustfs/rustfs:1.0.1
+        env:
+          RUSTFS_VOLUMES: /data
+          RUSTFS_ADDRESS: 0.0.0.0:9000
+          RUSTFS_ACCESS_KEY: ci-access-key
+          RUSTFS_SECRET_KEY: ci-secret-key-not-a-real-secret
+        ports:
+          - 9000:9000
+
+    # ค่าสำหรับ CI เท่านั้น (ไม่ใช่ความลับจริง) — ไม่มี ANTHROPIC_API_KEY:
+    # test ไม่เรียก AI จริงเลย
+    env:
+      DATABASE_URL: postgres://finance:finance-ci@localhost:5432/finance
+      BETTER_AUTH_SECRET: ci-only-secret-0123456789abcdef0123456789abcdef
+      BETTER_AUTH_URL: http://localhost:3000
+      DEMO_USER_EMAIL: demo@finance.local
+      DEMO_USER_PASSWORD: demo-password-1234
+      S3_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: finance-dashboard
+      S3_ACCESS_KEY_ID: ci-access-key
+      S3_SECRET_ACCESS_KEY: ci-secret-key-not-a-real-secret
+      S3_FORCE_PATH_STYLE: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Wait for file storage
+        run: |
+          for i in $(seq 1 30); do
+            curl -s -o /dev/null http://localhost:9000 && exit 0
+            sleep 2
+          done
+          echo "RustFS did not start" && exit 1
+
+      - name: Migrate and seed database
+        run: |
+          npm run db:migrate
+          npm run db:seed
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build app image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runner
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build migrator image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: migrator
+          push: false
+          cache-from: type=gha
