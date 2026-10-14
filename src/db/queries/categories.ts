@@ -4,6 +4,8 @@ import { db } from "@/db";
 import { categories, categoryRules, transactions, type Category } from "@/db/schema";
 import { normalizeForMatch, type MatchableRule } from "@/lib/categorize/rules";
 
+import { escapeLike } from "./like";
+
 // Every query takes the owner's userId first and filters on it. Built-in
 // categories and system rules (userId = null) are visible to everyone.
 
@@ -143,10 +145,6 @@ export async function setTransactionCategory(
     )
     .returning();
   return updated;
-}
-
-function escapeLike(text: string): string {
-  return text.replace(/[\\%_]/g, (char) => `\\${char}`);
 }
 
 /**
