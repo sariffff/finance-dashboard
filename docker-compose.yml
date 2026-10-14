@@ -1,0 +1,36 @@
+# docker-compose.yml สำหรับ Personal Finance Dashboard (ใช้ตอนพัฒนาในเครื่อง)
+# วิธีใช้: เปิด terminal ในโฟลเดอร์โปรเจกต์ แล้วรัน  docker compose up -d
+
+services:
+  # ---------- ฐานข้อมูล PostgreSQL ----------
+  db:
+    image: postgres:17            # image สำเร็จรูปของ PostgreSQL เวอร์ชัน 17
+    container_name: finance-db
+    restart: unless-stopped       # เปิดเครื่องใหม่ Docker จะเปิด container ให้เอง
+    environment:                  # ค่าเหล่านี้ดึงมาจากไฟล์ .env
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"               # พอร์ตเครื่องเรา : พอร์ตใน container
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # เก็บข้อมูลไว้นอก container ลบ container ข้อมูลก็ไม่หาย
+    healthcheck:                  # ให้ Docker เช็คว่า database พร้อมใช้งานหรือยัง
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------- Adminer: หน้าเว็บไว้ดูข้อมูลใน database ----------
+  adminer:
+    image: adminer
+    container_name: finance-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"               # เปิดดูที่ http://localhost:8080
+    depends_on:
+      db:
+        condition: service_healthy   # รอให้ database พร้อมก่อนค่อยเปิด
+
+volumes:
+  pgdata:
