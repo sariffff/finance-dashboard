@@ -4,6 +4,7 @@ import { client, db } from "@/db";
 import { env } from "@/env";
 import { auth } from "@/lib/auth";
 import { categorizeUncategorized } from "@/lib/categorize";
+import { ensureBucket, isStorageConfigured } from "@/lib/storage";
 
 import { createBankAccount, listBankAccounts } from "./queries/bank-accounts";
 import { categories, categoryRules, user, type NewCategory } from "./schema";
@@ -134,6 +135,9 @@ async function main() {
     await seedCategories();
     await seedSystemRules();
     await seedDemoUser();
+    if (isStorageConfigured()) {
+      console.log(`Storage bucket: ${await ensureBucket()}`);
+    }
   } finally {
     await client.end();
   }

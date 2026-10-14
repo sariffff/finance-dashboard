@@ -28,6 +28,14 @@ const envSchema = z.object({
   AI_MODEL_CATEGORIZE: optional(model),
   AI_MODEL_SLIP: optional(model),
   AI_MODEL_INSIGHTS: optional(model),
+  // S3-compatible file storage (RustFS locally, Cloudflare R2 in production).
+  // Optional: without it, original statement files are not kept.
+  S3_ENDPOINT: optional(z.url()),
+  S3_REGION: optional(z.string()).transform((value) => value ?? "auto"),
+  S3_BUCKET: optional(z.string()),
+  S3_ACCESS_KEY_ID: optional(z.string()),
+  S3_SECRET_ACCESS_KEY: optional(z.string()),
+  S3_FORCE_PATH_STYLE: optional(z.enum(["true", "false"])).transform((value) => value === "true"),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
