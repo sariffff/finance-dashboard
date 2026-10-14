@@ -3,18 +3,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { PdfPasswordError, type PdfTextItem } from "@/lib/pdf";
-
-import {
-  FIXTURE_PASSWORD,
-  expectedTransactions,
-} from "./__fixtures__/scb-sample-data";
 import { normalizeThai } from "@/lib/thai";
 
-import {
-  parseScbPages,
-  parseStatementDate,
-  scbParser,
-} from "./scb";
+import { FIXTURE_PASSWORD, expectedTransactions } from "./__fixtures__/scb-sample-data";
+import { parseScbPages, scbParser } from "./scb";
+import { parseStatementDate } from "./table";
 import { StatementFormatError } from "./types";
 
 const fixturePdf = new Uint8Array(
