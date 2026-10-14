@@ -156,6 +156,23 @@ export const categoryRules = pgTable(
   ],
 );
 
+// One AI-written summary per user and month. `inputHash` fingerprints the
+// numbers it was written from: the cached text is reused until the month's
+// figures change (e.g. after another import).
+export const monthlyInsights = pgTable(
+  "monthly_insights",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: userIdColumn().notNull(),
+    month: text("month").notNull(), // "YYYY-MM"
+    bullets: jsonb("bullets").$type<string[]>().notNull(),
+    inputHash: text("input_hash").notNull(),
+    model: text("model").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [unique("monthly_insights_user_id_month_unique").on(t.userId, t.month)],
+);
+
 export type BankAccount = typeof bankAccounts.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type NewCategory = typeof categories.$inferInsert;
