@@ -12,7 +12,8 @@ const globalForDb = globalThis as unknown as { pgClient?: postgres.Sql };
 // Neon's pooled endpoint (host contains "-pooler") runs PgBouncer in
 // transaction mode, which can't keep named prepared statements across
 // transactions — turn them off there. Direct connections keep them.
-const pooled = new URL(env.DATABASE_URL).hostname.includes("-pooler");
+// (A plain string check: during `docker build` the URL isn't set at all.)
+const pooled = Boolean(env.DATABASE_URL?.includes("-pooler."));
 
 export const client =
   globalForDb.pgClient ?? postgres(env.DATABASE_URL, pooled ? { prepare: false } : {});

@@ -2,6 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "buildCommand": "node scripts/vercel-build.mjs",
+  "git": {
+    "deploymentEnabled": { "*": false, "main": true }
+  },
   "crons": [
     { "path": "/api/cron/reset-demo", "schedule": "0 20 * * *" }
   ]
