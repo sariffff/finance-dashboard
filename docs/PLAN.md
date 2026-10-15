@@ -120,7 +120,9 @@
 - [x] เก็บไฟล์ต้นฉบับ (statement + สลิป) แบบ private + signed URL 60 วินาที + ผู้ใช้ลบได้
       ตอนพัฒนาใช้ **RustFS** ใน Docker (MinIO เลิกแจก image รุ่นฟรีแล้ว) — R2 ใช้ S3 API เดียวกัน เปลี่ยนแค่ `.env`
 - [x] เลือกโมเดล Claude ได้ใน `.env` (`AI_MODEL`, `AI_MODEL_CATEGORIZE/SLIP/INSIGHTS`)
-- [ ] ทดสอบ parser SCB/KBANK กับ statement จริง (fixture จำลอง layout จากข้อมูลสาธารณะ)
+- [x] ทดสอบ parser SCB กับ statement จริง (2026-10-15): 101 รายการ ยอดรวมตรงกับยอด "รวม" ของธนาคารทุกหน้า, ไม่มีคำเตือน
+      layout จริงต่างจากข้อมูลสาธารณะ (หัวคอลัมน์, เครื่องหมาย +/-, แถวรวมทุกหน้า, วรรณยุกต์เป็น PUA) → แก้ใน PR #5
+- [ ] ทดสอบ parser KBANK กับ statement จริง (fixture ยังจำลองจากข้อมูลสาธารณะ)
 - [ ] ทดสอบอ่านสลิปด้วย Claude จริง (ต้องมี `ANTHROPIC_API_KEY`)
 - [ ] ย้ายที่เก็บไฟล์ไป Cloudflare R2 ตอน deploy (ต้องมีบัญชี Cloudflare)
 

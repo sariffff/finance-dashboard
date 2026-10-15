@@ -51,8 +51,11 @@ PostgreSQL ใน Docker เปิดที่ **localhost:5433** (เครื�
   bucket ห้าม public, เข้าถึงผ่าน signed URL อายุสั้นหลังเช็คเจ้าของไฟล์เท่านั้น, ผู้ใช้ลบไฟล์ของตัวเองได้
   **ห้ามเก็บรหัสผ่าน PDF**
 - **Statement parser**: แต่ละธนาคารเป็น module ใน `src/lib/parsers/` ตาม interface ใน `types.ts`
-  SCB parser ยังไม่เคยทดสอบกับ PDF จริง — ถ้าผู้ใช้เอาไฟล์จริงมา ให้ตรวจ layout และอัปเดต fixture
-  ข้อความไทยจาก PDF ต้องผ่าน `normalizeThai()` (สระอำเพี้ยน) และ `joinItems()` (คำถูกแยกเป็นหลายชิ้น)
+  SCB parser ตรวจกับ statement จริงแล้ว (SCB EASY, 2026-10-15) — fixture จำลอง layout จริงด้วยข้อมูลปลอม
+  KBANK ยังไม่เคยทดสอบกับไฟล์จริง — ถ้าผู้ใช้เอาไฟล์จริงมา ให้ตรวจ layout และอัปเดต fixture
+  **ห้าม commit ไฟล์ statement จริง** (`.gitignore` กัน `*.pdf` ยกเว้น fixtures) และอย่าเก็บรหัสผ่านไว้ในไฟล์ใด ๆ
+  ข้อความไทยจาก PDF ต้องผ่าน `normalizeThai()` (สระอำเพี้ยน + วรรณยุกต์ที่ฟอนต์เก็บเป็น Private Use Area U+F700–F71A)
+  และ `joinItems()` (คำถูกแยกเป็นหลายชิ้น)
 - **AI output**: ต้องผ่าน Zod schema ก่อนใช้งานเสมอ ห้ามเชื่อ output ดิบ
   - รองรับ 2 ผู้ให้บริการ (เพิ่ม Gemini 2026-10-15 ตามที่ผู้ใช้ขอ): ชื่อโมเดลใน `AI_MODEL` / `AI_MODEL_<งาน>` บอกผู้ให้บริการ
     - Claude: `claude-*` + `fallbacks: "default"` ผ่าน `@anthropic-ai/sdk` — key `ANTHROPIC_API_KEY`
