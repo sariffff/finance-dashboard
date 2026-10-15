@@ -2,11 +2,20 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 
-import { DEFAULT_MODEL, refusalFallbackParams, type ClaudeModel } from "@/lib/ai/models";
+import { createGeminiClient, generateJson, type GeminiClient } from "@/lib/ai/gemini";
+import {
+  DEFAULT_GEMINI_MODEL,
+  DEFAULT_MODEL,
+  isGeminiModel,
+  refusalFallbackParams,
+  type AiModel,
+  type ClaudeModel,
+  type GeminiModel,
+} from "@/lib/ai/models";
 
 import type { InsightFacts } from "./facts";
 
-/** Writes Thai summary bullets from precomputed facts — Claude in production, a stub in tests. */
+/** Writes Thai summary bullets from precomputed facts — Claude or Gemini in production, a stub in tests. */
 export type InsightWriter = {
   /** Part of the cache key: a different model means a fresh summary. */
   model: string;
@@ -48,4 +57,30 @@ export function createClaudeInsightWriter({
       return parsed.success ? parsed.data.bullets : [];
     },
   };
+}
+
+export function createGeminiInsightWriter({
+  model = DEFAULT_GEMINI_MODEL,
+  client = createGeminiClient(),
+}: { model?: GeminiModel; client?: GeminiClient } = {}): InsightWriter {
+  return {
+    model,
+    async write(facts) {
+      const output = await generateJson({
+        client,
+        model,
+        system: SYSTEM_PROMPT,
+        parts: [{ text: JSON.stringify(facts) }],
+        schema: responseSchema,
+        maxOutputTokens: 4000,
+      });
+      const parsed = responseSchema.safeParse(output);
+      return parsed.success ? parsed.data.bullets : [];
+    },
+  };
+}
+
+/** Claude or Gemini, by the model's name. */
+export function createInsightWriter(model: AiModel): InsightWriter {
+  return isGeminiModel(model) ? createGeminiInsightWriter({ model }) : createClaudeInsightWriter({ model });
 }

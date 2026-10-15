@@ -39,5 +39,8 @@ export default defineConfig({
     url: `http://localhost:${PORT}/api/health`,
     reuseExistingServer: !isCI,
     timeout: 300_000,
+    // Tests never call a real AI API, even when .env has keys: Next.js keeps
+    // values already in the environment, and the env schema reads "" as unset.
+    env: { ANTHROPIC_API_KEY: "", GEMINI_API_KEY: "" },
   },
 });

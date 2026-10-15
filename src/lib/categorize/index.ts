@@ -8,7 +8,7 @@ import {
 } from "@/db/queries/categories";
 import { isAiConfigured, modelFor } from "@/lib/ai/config";
 
-import { createClaudeCategorizer, type AiCategorizer } from "./ai";
+import { createCategorizer, type AiCategorizer } from "./ai";
 import { findMatchingRule, kindForDirection, normalizeForMatch, sortRules } from "./rules";
 
 export type CategorizeStats = {
@@ -19,9 +19,9 @@ export type CategorizeStats = {
   aiFailed: boolean;
 };
 
-/** Claude when an API key is configured, otherwise rules only. */
+/** Claude or Gemini (per the configured model) when its key is set, otherwise rules only. */
 export function getDefaultCategorizer(): AiCategorizer | null {
-  return isAiConfigured() ? createClaudeCategorizer({ model: modelFor("categorize") }) : null;
+  return isAiConfigured("categorize") ? createCategorizer(modelFor("categorize")) : null;
 }
 
 /**

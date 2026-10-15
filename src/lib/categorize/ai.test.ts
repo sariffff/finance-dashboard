@@ -1,8 +1,11 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it, vi } from "vitest";
 
+import { fakeGemini } from "@/lib/ai/gemini.fake";
+
 import {
   createClaudeCategorizer,
+  createGeminiCategorizer,
   validateAiResults,
   type AiCategoryRequest,
   type CategoryOption,
@@ -117,5 +120,41 @@ describe("createClaudeCategorizer", () => {
     const many = Array.from({ length: 120 }, (_, id) => ({ id, description: `ร้าน ${id}`, direction: "out" as const }));
     await createClaudeCategorizer({ client })(many, categories);
     expect(parse).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("createGeminiCategorizer", () => {
+  it("sends the same prompt and categories, and validates the answer like Claude's", async () => {
+    const { client, generateContent } = fakeGemini({
+      text: JSON.stringify({
+        results: [
+          { id: 0, categoryName: "อาหารและเครื่องดื่ม", merchant: "ร้านอาหารส้มตำนัว" },
+          // Not a category that exists: dropped.
+          { id: 1, categoryName: "ลอตเตอรี่", merchant: null },
+        ],
+      }),
+    });
+
+    const results = await createGeminiCategorizer({ client, model: "gemini-3.5-flash-lite" })(items, categories);
+
+    expect(results).toEqual([{ id: 0, categoryName: "อาหารและเครื่องดื่ม", merchant: "ร้านอาหารส้มตำนัว" }]);
+    const request = generateContent.mock.calls[0][0];
+    expect(request.model).toBe("gemini-3.5-flash-lite");
+    expect(JSON.parse(request.contents[0].parts[0].text)).toEqual({
+      categories: { in: ["รายได้อื่น"], out: ["อาหารและเครื่องดื่ม", "เดินทาง"] },
+      transactions: items,
+    });
+  });
+
+  it("treats a blocked or unparseable answer as no answer", async () => {
+    expect(await createGeminiCategorizer({ client: fakeGemini({ text: "{}", blockReason: "SAFETY" }).client })(items, categories)).toEqual([]);
+    expect(await createGeminiCategorizer({ client: fakeGemini({ text: "oops" }).client })(items, categories)).toEqual([]);
+  });
+
+  it("splits large inputs into batches", async () => {
+    const { client, generateContent } = fakeGemini({ text: '{"results":[]}' });
+    const many = Array.from({ length: 120 }, (_, id) => ({ id, description: `ร้าน ${id}`, direction: "out" as const }));
+    await createGeminiCategorizer({ client })(many, categories);
+    expect(generateContent).toHaveBeenCalledTimes(3);
   });
 });
