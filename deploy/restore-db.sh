@@ -26,5 +26,7 @@ $COMPOSE stop app
 # --single-transaction: ถ้าพังกลางทาง ข้อมูลเดิมยังอยู่ครบ
 $COMPOSE exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner --single-transaction' < "$1"
 
+# start app จะรัน service migrate ก่อน (depends_on) — ถ้า backup มาจากโค้ดเวอร์ชันเก่า
+# migration ที่ขาดไปจะถูกรันต่อให้ครบ ส่วน seed ข้ามของที่มีอยู่แล้ว
 $COMPOSE start app
 echo "Restored from $1"

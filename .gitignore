@@ -42,3 +42,6 @@ next-env.d.ts
 
 # allow the env template
 !.env.example
+
+# database backups (deploy/backup-db.sh)
+/backups
