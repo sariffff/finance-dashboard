@@ -41,4 +41,15 @@ const envSchema = z.object({
     .default("development"),
 });
 
-export const env = envSchema.parse(process.env);
+type Env = z.infer<typeof envSchema>;
+
+/**
+ * `next build` inside Docker runs without secrets (they are supplied only
+ * when the container starts), but the build still imports server modules.
+ * SKIP_ENV_VALIDATION=1 — set only in the Dockerfile's build stage — lets
+ * the build through with whatever is set; the running app always validates.
+ */
+export const env: Env =
+  process.env.SKIP_ENV_VALIDATION === "1"
+    ? (envSchema.partial().parse(process.env) as Env)
+    : envSchema.parse(process.env);

@@ -126,12 +126,12 @@
 ---
 
 ## Phase 8 — Docker ทั้งระบบ + CI/CD + Deploy  🐳 (อธิบายทุกขั้น ผู้ใช้กำลังเรียน)
-- [ ] `Dockerfile` แบบ multi-stage สำหรับ Next.js (`output: "standalone"`)
-- [ ] `docker-compose.prod.yml`: app + db (+ reverse proxy เช่น Caddy สำหรับ HTTPS)
-- [ ] รัน migration ตอน deploy
-- [ ] GitHub Actions: lint, typecheck, test ทุก push/PR
-- [ ] Deploy บน VPS + โดเมน + HTTPS
-- [ ] สคริปต์ backup database (`pg_dump`)
+- [x] `Dockerfile` แบบ multi-stage สำหรับ Next.js (`output: "standalone"`)
+- [x] `docker-compose.prod.yml`: app + db (+ reverse proxy เช่น Caddy สำหรับ HTTPS)
+- [x] รัน migration ตอน deploy — service `migrate` รันก่อน app ทุกครั้ง (app เปิดเฉพาะเมื่อ migrate สำเร็จ)
+- [x] GitHub Actions: lint, typecheck, test, build + Docker image ทุก push/PR (ผ่านใน PR #1)
+- [ ] Deploy บน VPS + โดเมน + HTTPS — คู่มือ: `docs/DEPLOY.md` (ทดสอบทั้งชุดในเครื่องด้วย DOMAIN=localhost แล้ว)
+- [x] สคริปต์ backup database (`scripts/backup-db.sh`, pg_dump -Fc + เก็บ 14 ไฟล์ล่าสุด, ทดสอบ restore แล้ว)
 
 **Done when:** เปิดเว็บผ่านโดเมนจริงได้, push แล้ว CI รันอัตโนมัติ
 

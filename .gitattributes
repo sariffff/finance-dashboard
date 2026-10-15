@@ -1,0 +1,10 @@
+# Always LF in the repo and on checkout: Dockerfile line continuations and
+# shell scripts break with CRLF, and Linux CI/servers expect LF.
+* text=auto eol=lf
+
+*.pdf binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary

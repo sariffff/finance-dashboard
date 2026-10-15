@@ -1,0 +1,16 @@
+# ไฟล์ที่ไม่ส่งเข้าไปตอน docker build
+# - ความลับ: .env ต้องไม่อยู่ใน image เด็ดขาด
+# - ของที่สร้างใหม่ใน container เองอยู่แล้ว: node_modules, .next
+.env
+.env.*
+!.env.example
+node_modules
+.next
+.git
+coverage
+*.tsbuildinfo
+npm-debug.log*
+Dockerfile
+.dockerignore
+docker-compose*.yml
+backups
