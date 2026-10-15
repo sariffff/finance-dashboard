@@ -138,8 +138,10 @@
 ---
 
 ## Phase 9 — Portfolio Polish
-- [ ] README: ปัญหาที่แก้, ฟีเจอร์, GIF สาธิต, ลิงก์ demo, tech stack + เหตุผลที่เลือก
-- [ ] Architecture diagram
-- [ ] หัวข้อ "Technical decisions" เช่น Rules→AI→Cache ลดค่า API, การเก็บเงินเป็น numeric, การจัดการข้อมูลอ่อนไหว
-- [ ] ข้อมูล demo สมจริง 6–12 เดือน
-- [ ] Playwright e2e สำหรับ flow หลัก (login → import → dashboard)
+- [x] README: ปัญหาที่แก้, ฟีเจอร์, ภาพหน้าจอ (desktop + mobile, `scripts/screenshots.mjs`), tech stack + เหตุผลที่เลือก
+- [ ] README: ลิงก์ demo — รอ deploy จริง (Phase 8)
+- [ ] README: GIF สาธิต flow นำเข้า (ตอนนี้มีภาพนิ่ง)
+- [x] Architecture diagram (Mermaid: ภาพรวมระบบ + ลำดับการนำเข้า)
+- [x] หัวข้อ "Technical decisions" เช่น Rules→AI→Cache ลดค่า API, การเก็บเงินเป็น numeric, การจัดการข้อมูลอ่อนไหว
+- [x] ข้อมูล demo สมจริง 12 เดือน (SCB + KBANK) — สร้างแบบ deterministic แล้วผ่าน pipeline จัดหมวดจริง, `db:seed` รีเซ็ตบัญชี demo ทุกครั้ง
+- [x] Playwright e2e สำหรับ flow หลัก (สมัคร/ล็อกอิน → นำเข้า PDF + กันซ้ำ → dashboard desktop/mobile) — รันใน CI ด้วย
