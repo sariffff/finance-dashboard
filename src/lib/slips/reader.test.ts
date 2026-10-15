@@ -1,7 +1,9 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it, vi } from "vitest";
 
-import { createClaudeSlipReader, emptySlipDraft, validateSlipFields } from "./reader";
+import { fakeGemini } from "@/lib/ai/gemini.fake";
+
+import { createClaudeSlipReader, createGeminiSlipReader, emptySlipDraft, validateSlipFields } from "./reader";
 
 const slip = {
   isSlip: true,
@@ -62,5 +64,27 @@ describe("createClaudeSlipReader", () => {
       type: "image",
       source: { type: "base64", media_type: "image/jpeg", data: "/9j/" },
     });
+  });
+});
+
+describe("createGeminiSlipReader", () => {
+  it("sends the image inline and validates the answer", async () => {
+    const { client, generateContent } = fakeGemini({ text: JSON.stringify(slip) });
+
+    const draft = await createGeminiSlipReader({ client, model: "gemini-3.5-flash" }).read({
+      data: new Uint8Array([0xff, 0xd8, 0xff]),
+      mediaType: "image/jpeg",
+    });
+
+    expect(draft.amount).toBe("1250.75");
+    const request = generateContent.mock.calls[0][0];
+    expect(request.model).toBe("gemini-3.5-flash");
+    expect(request.contents[0].parts[0]).toEqual({ inlineData: { mimeType: "image/jpeg", data: "/9j/" } });
+  });
+
+  it("returns an empty draft when the model gives no usable answer", async () => {
+    const { client } = fakeGemini({ text: "{}", blockReason: "SAFETY" });
+    const draft = await createGeminiSlipReader({ client }).read({ data: new Uint8Array([1]), mediaType: "image/png" });
+    expect(draft).toEqual(emptySlipDraft());
   });
 });

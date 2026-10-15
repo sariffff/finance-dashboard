@@ -2,7 +2,16 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 
-import { DEFAULT_MODEL, refusalFallbackParams, type ClaudeModel } from "@/lib/ai/models";
+import { createGeminiClient, generateJson, type GeminiClient } from "@/lib/ai/gemini";
+import {
+  DEFAULT_GEMINI_MODEL,
+  DEFAULT_MODEL,
+  isGeminiModel,
+  refusalFallbackParams,
+  type AiModel,
+  type ClaudeModel,
+  type GeminiModel,
+} from "@/lib/ai/models";
 
 import { kindForDirection, normalizeForMatch, type CategoryKind } from "./rules";
 
@@ -22,7 +31,7 @@ export type AiCategoryResult = {
   merchant: string | null;
 };
 
-/** Anything that can categorize a batch — Claude in production, a stub in tests. */
+/** Anything that can categorize a batch — Claude or Gemini in production, a stub in tests. */
 export type AiCategorizer = (
   items: AiCategoryRequest[],
   categories: CategoryOption[],
@@ -126,4 +135,33 @@ export function createClaudeCategorizer({
     }
     return results;
   };
+}
+
+export function createGeminiCategorizer({
+  model = DEFAULT_GEMINI_MODEL,
+  client = createGeminiClient(),
+}: { model?: GeminiModel; client?: GeminiClient } = {}): AiCategorizer {
+  return async (items, categories) => {
+    const results: AiCategoryResult[] = [];
+
+    for (let i = 0; i < items.length; i += BATCH_SIZE) {
+      const batch = items.slice(i, i + BATCH_SIZE);
+      const output = await generateJson({
+        client,
+        model,
+        system: SYSTEM_PROMPT,
+        parts: [{ text: buildUserMessage(batch, categories) }],
+        schema: responseSchema,
+        maxOutputTokens: 16000,
+      });
+      // Same checks as Claude's answers: nothing unvalidated gets through.
+      if (output) results.push(...validateAiResults(output, batch, categories));
+    }
+    return results;
+  };
+}
+
+/** Claude or Gemini, by the model's name. */
+export function createCategorizer(model: AiModel): AiCategorizer {
+  return isGeminiModel(model) ? createGeminiCategorizer({ model }) : createClaudeCategorizer({ model });
 }

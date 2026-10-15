@@ -2,7 +2,16 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 
-import { DEFAULT_MODEL, refusalFallbackParams, type ClaudeModel } from "@/lib/ai/models";
+import { createGeminiClient, generateJson, type GeminiClient } from "@/lib/ai/gemini";
+import {
+  DEFAULT_GEMINI_MODEL,
+  DEFAULT_MODEL,
+  isGeminiModel,
+  refusalFallbackParams,
+  type AiModel,
+  type ClaudeModel,
+  type GeminiModel,
+} from "@/lib/ai/models";
 import type { SlipDraft } from "@/lib/import/types";
 import { parseAmountToSatang, satangToDecimalString } from "@/lib/money";
 
@@ -11,7 +20,7 @@ export type SlipImage = {
   mediaType: "image/jpeg" | "image/png" | "image/webp";
 };
 
-/** Reads a transfer slip image — Claude in production, a stub in tests. */
+/** Reads a transfer slip image — Claude or Gemini in production, a stub in tests. */
 export type SlipReader = {
   model: string;
   read(image: SlipImage): Promise<SlipDraft>;
@@ -139,4 +148,33 @@ export function createClaudeSlipReader({
       return validateSlipFields(response.parsed_output);
     },
   };
+}
+
+export function createGeminiSlipReader({
+  model = DEFAULT_GEMINI_MODEL,
+  client = createGeminiClient(),
+}: { model?: GeminiModel; client?: GeminiClient } = {}): SlipReader {
+  return {
+    model,
+    async read(image) {
+      const output = await generateJson({
+        client,
+        model,
+        system: SYSTEM_PROMPT,
+        parts: [
+          { inlineData: { mimeType: image.mediaType, data: Buffer.from(image.data).toString("base64") } },
+          { text: "Read this slip." },
+        ],
+        schema: responseSchema,
+        maxOutputTokens: 4000,
+      });
+      // validateSlipFields turns a missing or invalid answer into an empty draft.
+      return validateSlipFields(output);
+    },
+  };
+}
+
+/** Claude or Gemini, by the model's name. */
+export function createSlipReader(model: AiModel): SlipReader {
+  return isGeminiModel(model) ? createGeminiSlipReader({ model }) : createClaudeSlipReader({ model });
 }

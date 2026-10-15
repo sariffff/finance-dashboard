@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/sariffff/finance-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/sariffff/finance-dashboard/actions/workflows/ci.yml)
 
-A personal finance dashboard for Thai bank accounts. Upload the password-protected PDF e-Statement from your bank (or a photo of a transfer slip); the app reads every transaction, categorizes it automatically — rules first, then Claude, with every AI answer cached as a new rule — and shows where the money went.
+A personal finance dashboard for Thai bank accounts. Upload the password-protected PDF e-Statement from your bank (or a photo of a transfer slip); the app reads every transaction, categorizes it automatically — rules first, then an LLM (Claude or Gemini), with every AI answer cached as a new rule — and shows where the money went.
 
 > **ภาษาไทย:** แดชบอร์ดการเงินส่วนตัวสำหรับบัญชีธนาคารไทย อัปโหลด e-Statement PDF (ที่มีรหัสผ่าน) หรือรูปสลิปโอนเงิน ระบบอ่านรายการ จัดหมวดหมู่อัตโนมัติด้วยกฎ + AI และสรุปรายรับรายจ่ายรายเดือนเป็นภาษาไทย
 
@@ -23,8 +23,9 @@ Thai banks hand you a monthly statement as a **password-protected PDF** — no C
 
 - **Statement import (SCB, KBANK)** — reads password-protected PDFs by text position, handles multi-line descriptions and multi-page statements, checks every row against the running balance, and shows a **preview** before anything is saved.
 - **No duplicates** — a stable fingerprint per row means re-importing a statement, or one whose period overlaps, adds nothing twice. A transfer recorded from a **slip** is recognised when the statement arrives later, and vice versa.
-- **Automatic categories: rules → AI → cache** — known merchants are matched by rules; the rest go to Claude in batches; every AI answer becomes a cached rule, so the same shop never costs an API call again. Fix a category once and choose "always use this for this shop".
-- **Slip reading** — upload a transfer slip image; Claude reads date, amount and recipient for you to check (or type it in yourself without an API key).
+- **Automatic categories: rules → AI → cache** — known merchants are matched by rules; the rest go to the AI in batches; every AI answer becomes a cached rule, so the same shop never costs an API call again. Fix a category once and choose "always use this for this shop".
+- **Slip reading** — upload a transfer slip image; the AI reads date, amount and recipient for you to check (or type it in yourself without an API key).
+- **Two AI providers** — Claude or Gemini, chosen by model name per task (e.g. a cheap Gemini Flash-Lite for categorizing, a stronger model for slips). Both go through the same prompts and the same validation.
 - **Dashboard** — monthly income / spending / balance with month-on-month change, spending by category, a 6-month trend (also available as a table), recent transactions; works on a phone.
 - **Monthly summary in Thai** — numbers are computed in SQL; only the totals go to the AI, and any sentence whose numbers don't match the data is dropped. Without an API key a rule-based summary is shown instead.
 - **Private file storage** — original statements and slips live in a private S3-compatible bucket (Cloudflare R2 in production), downloadable only through 60-second signed URLs after an ownership check, and deletable by their owner.
@@ -48,9 +49,9 @@ flowchart LR
 
   queries --> pg[(PostgreSQL 17)]
   categorize --> pg
-  categorize -.->|uncategorized rows only| claude[[Claude API]]
-  insights -.->|monthly totals only| claude
-  ui -.->|slip images| claude
+  categorize -.->|uncategorized rows only| llm[[Claude or Gemini API]]
+  insights -.->|monthly totals only| llm
+  ui -.->|slip images| llm
   ui -->|originals, private| r2[(Cloudflare R2)]
 ```
 
@@ -72,7 +73,7 @@ sequenceDiagram
   A->>DB: insert rows, skip known fingerprints
   A->>C: categorize new rows
   C->>DB: user rules → cached AI rules → system rules
-  C->>C: Claude for the rest (one call per distinct description)
+  C->>C: AI for the rest (one call per distinct description)
   C->>DB: save answers as ai_cache rules
 ```
 
@@ -82,7 +83,8 @@ sequenceDiagram
 |---|---|
 | **Rules → AI → cache** for categories | Most spending repeats (the same café, the same app). Rules handle the known ones for free, the AI sees each *new* description once, and its answer becomes a rule. In the demo data, 451 of 802 rows (56%) match built-in rules, and the other 351 need only 15 distinct AI lookups — after which 11 new cached rules cover those merchants for good. |
 | **Money as `numeric(14,2)`, integer satang in TypeScript** | Floats can't represent 0.10 exactly. Amounts are parsed into integer satang, summed in SQL, and only turned into baht numbers for drawing charts. |
-| **Never trust AI output** | Every Claude response is parsed with a Zod schema, may only name categories that exist, and insight sentences whose numbers don't match the computed totals are removed. The app works fully without an API key. |
+| **Never trust AI output** | Every response — Claude's or Gemini's — is parsed with the same Zod schema, may only name categories that exist, and insight sentences whose numbers don't match the computed totals are removed. The app works fully without an API key. |
+| **Provider chosen by model name** | `AI_MODEL=gemini-3.5-flash` or `claude-opus-5-5` (and per task via `AI_MODEL_<TASK>`) picks the provider; each task has one prompt and one validator shared by both SDK adapters. Swapping providers is a config change, and a missing key just turns that feature off. |
 | **Authorization in one place** | No row-level security in the database, so every query lives in `src/db/queries/*`, takes the `userId` from `requireUser()` as its first argument, and tests check that user A cannot read user B's data. The proxy only does an optimistic cookie check. |
 | **Parse PDFs by position, not by regex on text** | Statement text comes out of PDFs fragmented (Thai vowels split, words in pieces). Parsers locate columns from the header's x-positions; a shared table reader means a new bank is mostly a layout config. Thai text is normalised before matching. |
 | **Sensitive data handling** | PDF passwords are used once in memory. Original files are private, served only via short-lived signed URLs after an ownership check, and the owner can delete them. |
@@ -96,7 +98,7 @@ sequenceDiagram
 - **PostgreSQL 17** · **Drizzle ORM** + drizzle-kit migrations · **postgres.js**
 - **Better Auth** (email + password)
 - **Zod** for every input from users and the AI
-- **Claude** via `@anthropic-ai/sdk` (categorization, slip reading, monthly summaries)
+- **Claude** via `@anthropic-ai/sdk` or **Gemini** via `@google/genai` (categorization, slip reading, monthly summaries)
 - **unpdf** for password-protected PDF parsing
 - S3 API (`@aws-sdk/client-s3`): **RustFS** locally, **Cloudflare R2** in production
 - **Vitest** (unit + integration against a real database) · **Playwright** (end-to-end)
@@ -115,7 +117,7 @@ npm run db:seed                 # categories, rules and the demo account with 12
 npm run dev                     # http://localhost:3000 → "ลองใช้ด้วยบัญชีตัวอย่าง"
 ```
 
-`ANTHROPIC_API_KEY` is optional: without it categories come from rules only and the summary is rule-based.
+AI is optional. Set `ANTHROPIC_API_KEY` and/or `GEMINI_API_KEY`; with no `AI_MODEL` the app picks `claude-opus-5-5` or `gemini-3.5-flash` by which key is present. Without a key, categories come from rules only and the summary is rule-based.
 
 Fictional statements to try the import with are in `src/lib/parsers/__fixtures__/` (`scb-statement.pdf`, password `01011990`; `kbank-statement.pdf`, password `15061995`).
 
@@ -127,7 +129,7 @@ npm test              # Vitest: parsers, dedupe, categorization, AI validation, 
 npm run test:e2e      # Playwright: sign-up/sign-in, PDF import with preview and duplicate detection, dashboard on desktop and mobile
 ```
 
-Tests never call the real Claude API — the categorizer and slip reader take an injectable stub. CI runs everything above plus both Docker image builds on every push and pull request.
+Tests never call a real AI API — the Claude and Gemini adapters take an injectable stub client, and the e2e server is started with the keys blanked. CI runs everything above plus both Docker image builds on every push and pull request.
 
 ## Deployment
 
@@ -144,7 +146,8 @@ src/
     demo-data.ts       deterministic demo history generator
   lib/
     parsers/           one module per bank + shared table reader
-    categorize/        rules, Claude categorizer, pipeline
+    ai/                model list, provider choice, Gemini JSON helper
+    categorize/        rules, Claude/Gemini categorizers, pipeline
     insights/          monthly facts (SQL) → Thai summary
     slips/             slip image reader
     import/            dedupe fingerprints, slip ↔ statement matching

@@ -20,7 +20,7 @@ import { requireUser } from "@/lib/dal";
 import type { SlipDraft } from "@/lib/import/types";
 import { parseAmountToSatang } from "@/lib/money";
 import type { ParsedTransaction } from "@/lib/parsers/types";
-import { createClaudeSlipReader, emptySlipDraft, type SlipImage } from "@/lib/slips/reader";
+import { createSlipReader, emptySlipDraft, type SlipImage } from "@/lib/slips/reader";
 import { importFileKey, isStorageConfigured, putFile } from "@/lib/storage";
 
 import type { FormState } from "./actions";
@@ -45,9 +45,9 @@ function detectImage(data: Uint8Array): { mediaType: SlipImage["mediaType"]; ext
 }
 
 async function readSlip(image: SlipImage): Promise<SlipDraft> {
-  if (!isAiConfigured()) return emptySlipDraft();
+  if (!isAiConfigured("slip")) return emptySlipDraft();
   try {
-    return await createClaudeSlipReader({ model: modelFor("slip") }).read(image);
+    return await createSlipReader(modelFor("slip")).read(image);
   } catch (error) {
     // Reading is a convenience: on failure the user fills the form in.
     console.error("Reading slip failed", error);

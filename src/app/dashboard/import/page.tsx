@@ -80,7 +80,7 @@ async function ImportContent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <SlipUploadForm accounts={accountOptions} aiEnabled={isAiConfigured()} />
+            <SlipUploadForm accounts={accountOptions} aiEnabled={isAiConfigured("slip")} />
           </CardContent>
         </Card>
       ) : null}

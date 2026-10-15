@@ -148,7 +148,7 @@ async function ImportPreview({ params }: { params: Promise<{ id: string }> }) {
             <p className="text-sm text-muted-foreground">
               {draft?.readByAi
                 ? "AI อ่านข้อมูลจากสลิปให้แล้ว กรุณาตรวจให้ถูกต้องก่อนบันทึก"
-                : isAiConfigured()
+                : isAiConfigured("slip")
                   ? "อ่านข้อมูลจากรูปไม่ได้ กรุณากรอกเองจากรูปสลิป"
                   : "ยังไม่ได้ตั้งค่า AI กรุณากรอกข้อมูลเองจากรูปสลิป"}
             </p>

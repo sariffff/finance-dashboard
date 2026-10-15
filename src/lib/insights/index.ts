@@ -5,7 +5,7 @@ import { getInsight, saveInsight } from "@/db/queries/insights";
 import { isAiConfigured, modelFor } from "@/lib/ai/config";
 import { addMonths, formatMonth } from "@/lib/month";
 
-import { createClaudeInsightWriter, type InsightWriter } from "./ai";
+import { createInsightWriter, type InsightWriter } from "./ai";
 import { buildFallbackBullets, buildInsightFacts, keepGroundedBullets, type InsightFacts } from "./facts";
 
 export type MonthlyInsight = { bullets: string[]; source: "ai" | "rules" };
@@ -15,7 +15,7 @@ const PROMPT_VERSION = 1;
 
 /** Claude when an API key is configured, otherwise rule-based summaries only. */
 export function getDefaultInsightWriter(): InsightWriter | null {
-  return isAiConfigured() ? createClaudeInsightWriter({ model: modelFor("insights") }) : null;
+  return isAiConfigured("insights") ? createInsightWriter(modelFor("insights")) : null;
 }
 
 async function loadFacts(userId: string, month: string): Promise<InsightFacts | null> {
