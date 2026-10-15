@@ -46,8 +46,8 @@ export function SlipUploadForm({
         error={state.fieldErrors?.file?.[0]}
         hint={
           aiEnabled
-            ? "JPG, PNG หรือ WEBP ไม่เกิน 5MB — AI จะช่วยอ่านข้อมูลให้ แล้วคุณตรวจก่อนบันทึก"
-            : "JPG, PNG หรือ WEBP ไม่เกิน 5MB — ยังไม่ได้ตั้งค่า AI จึงต้องกรอกข้อมูลเองจากรูป"
+            ? "JPG, PNG หรือ WEBP ไม่เกิน 4MB — AI จะช่วยอ่านข้อมูลให้ แล้วคุณตรวจก่อนบันทึก"
+            : "JPG, PNG หรือ WEBP ไม่เกิน 4MB — ยังไม่ได้ตั้งค่า AI จึงต้องกรอกข้อมูลเองจากรูป"
         }
       >
         <Input id="slip-file" name="file" type="file" accept="image/jpeg,image/png,image/webp" required />

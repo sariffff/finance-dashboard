@@ -26,7 +26,8 @@ export type FormState = {
   fieldErrors?: Record<string, string[] | undefined>;
 };
 
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
+// Vercel accepts request bodies up to 4.5MB, form overhead included.
+const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 const bankAccountSchema = z.object({
   bankCode: z.enum(bankCodes, "กรุณาเลือกธนาคาร"),
@@ -58,7 +59,7 @@ const uploadSchema = z.object({
   file: z
     .instanceof(File, { message: "กรุณาเลือกไฟล์" })
     .refine((file) => file.size > 0, "กรุณาเลือกไฟล์")
-    .refine((file) => file.size <= MAX_FILE_BYTES, "ไฟล์ต้องมีขนาดไม่เกิน 5MB"),
+    .refine((file) => file.size <= MAX_FILE_BYTES, "ไฟล์ต้องมีขนาดไม่เกิน 4MB"),
 });
 
 const PDF_MAGIC = "%PDF-";

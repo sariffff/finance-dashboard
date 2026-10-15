@@ -25,14 +25,15 @@ import { importFileKey, isStorageConfigured, putFile } from "@/lib/storage";
 
 import type { FormState } from "./actions";
 
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
+// Vercel accepts request bodies up to 4.5MB, form overhead included.
+const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 const uploadSchema = z.object({
   bankAccountId: z.uuid("กรุณาเลือกบัญชี"),
   file: z
     .instanceof(File, { message: "กรุณาเลือกรูปสลิป" })
     .refine((file) => file.size > 0, "กรุณาเลือกรูปสลิป")
-    .refine((file) => file.size <= MAX_FILE_BYTES, "รูปต้องมีขนาดไม่เกิน 5MB"),
+    .refine((file) => file.size <= MAX_FILE_BYTES, "รูปต้องมีขนาดไม่เกิน 4MB"),
 });
 
 /** Image type from the file's first bytes, not its name or claimed MIME type. */

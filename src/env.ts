@@ -39,6 +39,9 @@ const envSchema = z.object({
   S3_ACCESS_KEY_ID: optional(z.string()),
   S3_SECRET_ACCESS_KEY: optional(z.string()),
   S3_FORCE_PATH_STYLE: optional(z.enum(["true", "false"])).transform((value) => value === "true"),
+  // Vercel Cron sends it as a bearer token; the demo-reset job refuses
+  // every request when it isn't set. Generate with: openssl rand -hex 32
+  CRON_SECRET: optional(z.string().min(16)),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
