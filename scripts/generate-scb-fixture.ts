@@ -1,33 +1,38 @@
 // Renders the fictional statement in src/lib/parsers/__fixtures__/
 // scb-sample-data.ts into a password-protected PDF that mimics the layout of
-// an SCB e-Statement. Run with: npm run fixtures
+// a real SCB e-Statement from the SCB EASY app (checked 2026-10): a single
+// Thai header row, the description before the amounts, signed amounts and
+// balance, DD/MM/YYYY dates, times with seconds, and a "รวม" totals row on
+// every page. Run with: npm run fixtures
 
 import { resolve } from "node:path";
 
 import {
   FIXTURE_PASSWORD,
-  OPENING_BALANCE_SATANG,
   fixtureRowsWithBalance,
 } from "../src/lib/parsers/__fixtures__/scb-sample-data";
 
-import { PAGE, createFixtureDoc, drawTableHeader, formatBaht, type FixtureColumn } from "./lib/fixture-pdf";
+import { PAGE, createFixtureDoc, formatBaht, type FixtureColumn } from "./lib/fixture-pdf";
 
 const OUTPUT = resolve("src/lib/parsers/__fixtures__/scb-statement.pdf");
-const ROW_HEIGHT = 16;
-const TABLE_TOP = 150;
-const TABLE_BOTTOM = 520;
+const ROW_HEIGHT = 19;
+const TABLE_TOP = 175;
+const ROWS_PER_PAGE = 18;
 
-// x positions; amounts are right-aligned inside `width`.
+// x positions as on the real statement; amounts are right-aligned in `width`.
 const COLUMNS = {
-  date: { x: 30, label: ["วันที่", "Date"] },
-  time: { x: 85, label: ["เวลา", "Time"] },
-  code: { x: 130, label: ["รายการ", "Code"] },
-  channel: { x: 175, label: ["ช่องทาง", "Channel"] },
-  withdrawal: { x: 225, width: 85, label: ["ถอนเงิน/หักบัญชี", "Withdrawal"] },
-  deposit: { x: 320, width: 85, label: ["ฝากเงิน/เข้าบัญชี", "Deposit"] },
-  balance: { x: 415, width: 90, label: ["ยอดเงินคงเหลือ", "Balance"] },
-  description: { x: 525, label: ["รายละเอียด", "Description"] },
+  date: { x: 49, label: ["วันที่", ""] },
+  time: { x: 97, label: ["เวลา", ""] },
+  code: { x: 132, label: ["รายการ", ""] },
+  channel: { x: 175, label: ["ช่องทาง", ""] },
+  description: { x: 212, label: ["รายละเอียด", ""] },
+  cheque: { x: 306, label: ["หมายเลขเช็ค", ""] },
+  withdrawal: { x: 365, width: 65, label: ["ถอน/โอนออก", ""] },
+  deposit: { x: 440, width: 65, label: ["ฝาก/โอนเข้า", ""] },
+  balance: { x: 510, width: 68, label: ["ยอดคงเหลือ", ""] },
 } satisfies Record<string, FixtureColumn>;
+// The description cell starts left of its centered header, as in the original.
+const DESCRIPTION_HEADER_X = 233;
 
 const fixture = createFixtureDoc(OUTPUT, {
   password: FIXTURE_PASSWORD,
@@ -35,56 +40,69 @@ const fixture = createFixtureDoc(OUTPUT, {
 });
 const { doc, write, writeRight } = fixture;
 
-function startPage(pageNumber: number) {
+const rows = fixtureRowsWithBalance();
+// Split into pages by printed lines (a wrapped description takes two).
+const pages: (typeof rows)[] = [[]];
+let linesOnPage = 0;
+for (const row of rows) {
+  if (linesOnPage + row.description.length > ROWS_PER_PAGE) {
+    pages.push([]);
+    linesOnPage = 0;
+  }
+  pages.at(-1)!.push(row);
+  linesOnPage += row.description.length;
+}
+
+const signed = (sign: "-" | "+", baht: string) => `${sign}${baht}`;
+const fullYear = (ddmmyy: string) => ddmmyy.replace(/\/(\d{2})$/, "/20$1");
+
+pages.forEach((pageRows, pageIndex) => {
   doc.addPage();
-  doc.fontSize(14);
-  write("ธนาคารไทยพาณิชย์ จำกัด (มหาชน)", 30, 30, true);
-  doc.fontSize(10);
-  write("รายการเดินบัญชี / Statement of Account", 30, 52);
-  write("ชื่อบัญชี: นาย ตัวอย่าง ทดสอบ   เลขที่บัญชี: xxx-x-x1234-x", 30, 70);
-  write("รอบระหว่างวันที่ 01/09/2026 - 30/09/2026", 30, 86);
-  write(`หน้า ${pageNumber}`, 760, 30);
-  drawTableHeader(fixture, COLUMNS, TABLE_TOP);
-}
+  doc.fontSize(9);
+  write("รายการบัญชี", 39, 40);
+  write("เงินฝากออมทรัพย์ (ออนไลน์ แอพ)", 95, 40);
+  write("เดือน", 39, 57);
+  write("กันยายน 2569", 68, 57);
+  write("ชื่อบัญชี", 39, 74);
+  write("นาย ตัวอย่าง ทดสอบ", 130, 74);
+  write("เลขที่บัญชี", 39, 91);
+  write("XXXX001234", 130, 91);
 
-function endPage() {
   doc.fontSize(8);
-  write("www.scb.co.th  SCB Call Center 02-777-7777", 30, PAGE.height - 40);
-}
+  for (const [key, column] of Object.entries(COLUMNS)) {
+    write(column.label[0], key === "description" ? DESCRIPTION_HEADER_X : column.x, TABLE_TOP - 30, true);
+  }
+  doc.moveTo(39, TABLE_TOP - 14).lineTo(580, TABLE_TOP - 14).stroke();
 
-let page = 1;
-let y = TABLE_TOP;
-startPage(page);
-doc.fontSize(9);
-write("ยอดเงินคงเหลือยกมา / Balance brought forward", COLUMNS.date.x, y);
-writeRight(formatBaht(OPENING_BALANCE_SATANG), COLUMNS.balance.x, COLUMNS.balance.width, y);
-y += ROW_HEIGHT;
+  let y = TABLE_TOP;
+  let pageOut = 0;
+  let pageIn = 0;
+  doc.fontSize(8);
+  for (const row of pageRows) {
+    const deposit = row.code === "X1";
+    if (deposit) pageIn += row.amountSatang;
+    else pageOut += row.amountSatang;
 
-for (const row of fixtureRowsWithBalance()) {
-  const height = ROW_HEIGHT * row.description.length;
-  if (y + height > TABLE_BOTTOM) {
-    endPage();
-    startPage(++page);
-    y = TABLE_TOP;
+    write(fullYear(row.date), COLUMNS.date.x, y);
+    write(`${row.time}:00`, COLUMNS.time.x, y);
+    write(row.code, COLUMNS.code.x + 10, y);
+    write(row.channel, COLUMNS.channel.x + 6, y);
+    row.description.forEach((text, index) => write(text, COLUMNS.description.x, y + index * ROW_HEIGHT));
+    const column = deposit ? COLUMNS.deposit : COLUMNS.withdrawal;
+    writeRight(signed(deposit ? "+" : "-", row.amount), column.x, column.width, y);
+    writeRight(signed("+", formatBaht(row.balanceSatang)), COLUMNS.balance.x, COLUMNS.balance.width, y);
+    y += ROW_HEIGHT * row.description.length;
   }
 
-  doc.fontSize(9);
-  write(row.date, COLUMNS.date.x, y);
-  write(row.time, COLUMNS.time.x, y);
-  write(row.code, COLUMNS.code.x, y);
-  write(row.channel, COLUMNS.channel.x, y);
-  const amountColumn = row.code === "X1" ? COLUMNS.deposit : COLUMNS.withdrawal;
-  writeRight(row.amount, amountColumn.x, amountColumn.width, y);
-  writeRight(formatBaht(row.balanceSatang), COLUMNS.balance.x, COLUMNS.balance.width, y);
-  row.description.forEach((line, index) => {
-    write(line, COLUMNS.description.x, y + index * ROW_HEIGHT);
-  });
-  y += height;
-}
+  // Page totals, notes and page number, as on the real statement.
+  y += 8;
+  write("รวม", 54, y, true);
+  writeRight(signed("-", formatBaht(pageOut)), COLUMNS.withdrawal.x - 10, COLUMNS.withdrawal.width, y);
+  writeRight(signed("+", formatBaht(pageIn)), COLUMNS.deposit.x - 10, COLUMNS.deposit.width, y);
+  write("หมายเหตุ", 37, y + 32);
+  write("กรณีที่ข้อมูลในเอกสารฉบับนี้ไม่ตรงกับข้อมูลในระบบของธนาคาร ให้ถือว่าข้อมูลในระบบของธนาคารเป็นข้อมูลที่ถูกต้อง", 82, y + 32);
+  write(`PAGE ${pageIndex + 1} of ${pages.length}`, 516, PAGE.height - 31);
+});
 
-doc.fontSize(9);
-write("Total amount / รวมทั้งสิ้น", COLUMNS.date.x, y + 8, true);
-endPage();
 doc.end();
-
-console.log(`Wrote ${OUTPUT} (${page} pages, password ${FIXTURE_PASSWORD})`);
+console.log(`Wrote ${OUTPUT} (${pages.length} pages, password ${FIXTURE_PASSWORD})`);

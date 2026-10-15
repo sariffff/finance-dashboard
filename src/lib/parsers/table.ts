@@ -53,9 +53,14 @@ type Layout = {
 };
 
 const TEXT_COLUMNS = new Set<ColumnKey>(["description", "details"]);
+const AMOUNT_COLUMNS = new Set<ColumnKey>(["withdrawal", "deposit", "amount", "balance"]);
+/** "1,234.50", "-50.00", "+48.90", or "-" for an empty amount cell. */
+const AMOUNT_TEXT = /^(?:[-+]?[\d,]+(?:\.\d{1,2})?|-)$/;
 const DATE_PATTERN = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/;
 const TIME_PATTERN = /^(\d{1,2}):(\d{2})(?::\d{2})?$/;
 const COLUMN_TOLERANCE = 2;
+/** Text pieces this close (PDF points) are one word — the same threshold joinItems uses for spaces. */
+const TOUCHING_GAP = 1;
 
 /**
  * Statement dates are DD/MM/YY, DD-MM-YY or with a 4-digit year, in either
@@ -86,10 +91,30 @@ export function parseStatementDate(text: string): string | null {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Join text pieces that touch, so a word drawn as several text items
+ * ("ถอน" + "/" + "โอนออก" when Thai and Latin glyphs come from different
+ * fonts, or a Thai word split at SARA AM) is matched and positioned as one
+ * cell instead of having its pieces land in different columns.
+ */
+function joinTouching(items: PdfTextItem[]): PdfTextItem[] {
+  const cells: PdfTextItem[] = [];
+  for (const item of [...items].sort((a, b) => a.x - b.x)) {
+    const previous = cells.at(-1);
+    if (previous && item.x - (previous.x + previous.width) <= TOUCHING_GAP) {
+      previous.str += item.str;
+      previous.width = item.x + item.width - previous.x;
+    } else {
+      cells.push({ ...item });
+    }
+  }
+  return cells;
+}
+
 function findLayout(line: PdfLine, config: TableLayoutConfig): Layout | null {
   const found = new Map<ColumnKey, PdfTextItem>();
 
-  for (const item of line.items) {
+  for (const item of joinTouching(line.items)) {
     const text = normalizeThai(item.str).toLowerCase();
     for (const [key, labels] of Object.entries(config.headerLabels) as [ColumnKey, string[]][]) {
       if (!found.has(key) && labels.some((label) => text.includes(label))) {
@@ -123,10 +148,14 @@ function findLayout(line: PdfLine, config: TableLayoutConfig): Layout | null {
 function columnFor(item: PdfTextItem, layout: Layout): ColumnKey {
   if (item.x >= layout.lastColumn.x - COLUMN_TOLERANCE) return layout.lastColumn.key;
 
+  // Words never belong in a money column: the tail of a long description
+  // can sit closer to the withdrawal header than to its own.
+  const isAmount = AMOUNT_TEXT.test(item.str.trim());
   const center = item.x + item.width / 2;
   let best: Column | undefined;
   for (const column of layout.columns) {
     if (column === layout.lastColumn) continue;
+    if (!isAmount && AMOUNT_COLUMNS.has(column.key)) continue;
     if (!best || Math.abs(column.center - center) < Math.abs(best.center - center)) {
       best = column;
     }
@@ -136,7 +165,7 @@ function columnFor(item: PdfTextItem, layout: Layout): ColumnKey {
 
 function cellsOf(line: PdfLine, layout: Layout): Cells {
   const itemsByColumn = new Map<ColumnKey, PdfTextItem[]>();
-  for (const item of line.items) {
+  for (const item of joinTouching(line.items)) {
     const key = columnFor(item, layout);
     itemsByColumn.set(key, [...(itemsByColumn.get(key) ?? []), item]);
   }
@@ -148,9 +177,16 @@ function cellsOf(line: PdfLine, layout: Layout): Cells {
   return cells;
 }
 
+/** An amount cell, signed ("-50.00", "+48.90") or not; "-" alone means empty. */
 function parseOptionalAmount(text: string | undefined): number | null {
   if (!text || text === "-") return null;
-  return parseAmountToSatang(text);
+  return parseAmountToSatang(text.replace(/^\+/, ""));
+}
+
+/** Withdrawal/deposit cells may carry a sign; their column gives the direction. */
+function parseOptionalMagnitude(text: string | undefined): number | null {
+  const amount = parseOptionalAmount(text);
+  return amount === null ? null : Math.abs(amount);
 }
 
 function lastAmountIn(line: PdfLine): number | null {
@@ -227,8 +263,8 @@ export function parseTableStatement(
       let single: number | null;
       let balance: number | null;
       try {
-        withdrawal = parseOptionalAmount(cells.get("withdrawal"));
-        deposit = parseOptionalAmount(cells.get("deposit"));
+        withdrawal = parseOptionalMagnitude(cells.get("withdrawal"));
+        deposit = parseOptionalMagnitude(cells.get("deposit"));
         single = parseOptionalAmount(cells.get("amount"));
         balance = parseOptionalAmount(cells.get("balance"));
       } catch {

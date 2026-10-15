@@ -89,6 +89,38 @@ describe("parseScbPages", () => {
     expect(warnings).toEqual([expect.stringContaining("ยอดคงเหลือไม่ตรง")]);
   });
 
+  it("reads the real SCB EASY layout: PUA tone marks, signed amounts, page totals", () => {
+    // Positions and quirks as extracted from a real statement (made-up rows):
+    // the font's tone marks come out as Private Use Area code points.
+    const pua = (point: number) => String.fromCodePoint(point);
+    const realHeader = line(661, [
+      [57, "วันที่"],
+      [101, "เวลา"],
+      [132, "รายการ"],
+      [175, `ช${pua(0xf70a)}องทาง`],
+      [233, "รายละเอียด"],
+      [306, "หมายเลขเช็ค"],
+      [371, "ถอน/โอนออก"],
+      [445, `ฝาก/โอนเข${pua(0xf70b)}า`],
+      [512, "ยอดคงเหลือ"],
+    ]);
+    const { transactions, warnings } = parseScbPages([
+      [
+        ...realHeader,
+        ...line(635, [[49, "01/09/2026"], [97, "17:10:00"], [142, "X2"], [181, "ENET"], [215, "จ่ายบิล ร้านตัวอย่าง"], [407, "-50.00"], [544, "+48.90"]]),
+        ...line(616, [[49, "01/09/2026"], [97, "17:18:00"], [142, "X1"], [181, "ENET"], [213, `รับโอนจาก KTB x1234 นาย ทดสอบ`], [470, "+1,100.00"], [536, "+1,148.90"]]),
+        ...line(137, [[54, "รวม"], [396, "-50.00"], [467, "+1,100.00"]]),
+        ...line(31, [[516, "PAGE 1 of 1"]]),
+      ],
+    ]);
+
+    expect(warnings).toEqual([]);
+    expect(transactions).toEqual([
+      { occurredAt: "2026-09-01", occurredTime: "17:10", description: "จ่ายบิล ร้านตัวอย่าง", amountSatang: 5000, direction: "out", balanceSatang: 4890, code: "X2", channel: "ENET" },
+      { occurredAt: "2026-09-01", occurredTime: "17:18", description: "รับโอนจาก KTB x1234 นาย ทดสอบ", amountSatang: 110000, direction: "in", balanceSatang: 114890, code: "X1", channel: "ENET" },
+    ]);
+  });
+
   it("splits a combined code/channel column", () => {
     const merged = line(500, [
       [30, "วันที่"],

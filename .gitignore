@@ -51,3 +51,8 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# bank statements and slips hold real financial data: never commit them
+# (the fictional test fixtures are the only PDFs in the repo)
+*.pdf
+!src/lib/parsers/__fixtures__/*.pdf
