@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/sariffff/finance-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/sariffff/finance-dashboard/actions/workflows/ci.yml)
 
+**Live demo: [finance-dashboard-eight-phi-42.vercel.app](https://finance-dashboard-eight-phi-42.vercel.app)** — click **"ลองใช้ด้วยบัญชีตัวอย่าง"** on the sign-in page to open a demo account with 12 months of fictional data (reset every night). The first load after a quiet spell can take a few seconds while the free database wakes up.
+
 A personal finance dashboard for Thai bank accounts. Upload the password-protected PDF e-Statement from your bank (or a photo of a transfer slip); the app reads every transaction, categorizes it automatically — rules first, then an LLM (Claude or Gemini), with every AI answer cached as a new rule — and shows where the money went.
 
 > **ภาษาไทย:** แดชบอร์ดการเงินส่วนตัวสำหรับบัญชีธนาคารไทย อัปโหลด e-Statement PDF (ที่มีรหัสผ่าน) หรือรูปสลิปโอนเงิน ระบบอ่านรายการ จัดหมวดหมู่อัตโนมัติด้วยกฎ + AI และสรุปรายรับรายจ่ายรายเดือนเป็นภาษาไทย
@@ -133,7 +135,9 @@ Tests never call a real AI API — the Claude and Gemini adapters take an inject
 
 ## Deployment
 
-`docker-compose.prod.yml` runs PostgreSQL, a one-shot migration container, the app, and Caddy with automatic HTTPS; only Caddy is exposed. See [docs/DEPLOY.md](docs/DEPLOY.md) for a VPS walkthrough, updates, and the `pg_dump` backup script.
+The live demo runs on **Vercel** with **Neon** Postgres (both free tiers): every push to `main` deploys, production builds apply migrations first over a direct connection, and a nightly Vercel Cron job resets the demo account. Demo AI uses a free-tier Gemini key.
+
+For self-hosting, `docker-compose.prod.yml` runs PostgreSQL, a one-shot migration container, the app, and Caddy with automatic HTTPS; only Caddy is exposed. See [docs/DEPLOY.md](docs/DEPLOY.md) for both setups, updates, and the `pg_dump` backup script.
 
 ## Project structure
 

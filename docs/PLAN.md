@@ -131,7 +131,7 @@
 - [x] `docker-compose.prod.yml`: app + db (+ reverse proxy เช่น Caddy สำหรับ HTTPS)
 - [x] รัน migration ตอน deploy — service `migrate` รันก่อน app ทุกครั้ง (app เปิดเฉพาะเมื่อ migrate สำเร็จ)
 - [x] GitHub Actions: lint, typecheck, test, build + Docker image ทุก push/PR (ผ่านใน PR #1)
-- [ ] Deploy บน VPS + โดเมน + HTTPS — คู่มือ: `docs/DEPLOY.md` (ทดสอบทั้งชุดในเครื่องด้วย DOMAIN=localhost แล้ว)
+- [x] Deploy จริง — **Vercel + Neon** (ฟรี, ผู้ใช้เลือก 2026-10-15 เพราะไม่มี VPS/โดเมน): https://finance-dashboard-eight-phi-42.vercel.app — ชุด VPS + Docker + Caddy ยังใช้ได้ (ทดสอบในเครื่องแล้ว) ดู `docs/DEPLOY.md`
 - [x] สคริปต์ backup database (`scripts/backup-db.sh`, pg_dump -Fc + เก็บ 14 ไฟล์ล่าสุด, ทดสอบ restore แล้ว)
 
 **Done when:** เปิดเว็บผ่านโดเมนจริงได้, push แล้ว CI รันอัตโนมัติ
@@ -140,7 +140,7 @@
 
 ## Phase 9 — Portfolio Polish
 - [x] README: ปัญหาที่แก้, ฟีเจอร์, ภาพหน้าจอ (desktop + mobile, `scripts/screenshots.mjs`), tech stack + เหตุผลที่เลือก
-- [ ] README: ลิงก์ demo — รอ deploy จริง (Phase 8)
+- [x] README: ลิงก์ demo (Vercel)
 - [ ] README: GIF สาธิต flow นำเข้า (ตอนนี้มีภาพนิ่ง)
 - [x] Architecture diagram (Mermaid: ภาพรวมระบบ + ลำดับการนำเข้า)
 - [x] หัวข้อ "Technical decisions" เช่น Rules→AI→Cache ลดค่า API, การเก็บเงินเป็น numeric, การจัดการข้อมูลอ่อนไหว
