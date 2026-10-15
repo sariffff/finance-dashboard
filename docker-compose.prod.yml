@@ -1,0 +1,94 @@
+# docker-compose.prod.yml — รันทั้งระบบบนเซิร์ฟเวอร์จริง (VPS)
+#
+#   cp deploy/env.production.example .env      # แล้วแก้ค่าใน .env
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# ลำดับการเปิด (Docker จัดการให้ผ่าน depends_on):
+#   db (รอจน healthy) → migrate (รัน migration + seed แล้วจบ) → app → caddy
+#
+# ต่างจาก docker-compose.yml (ตอนพัฒนา) ตรงที่:
+#   - database ไม่เปิดพอร์ตออกนอกเครื่อง: มีแค่ container ในเครือข่ายเดียวกันที่คุยกับมันได้
+#   - ไม่มี Adminer และ RustFS (production ใช้ Cloudflare R2 หรือไม่เก็บไฟล์เลย)
+#   - Caddy เป็นประตูหน้าเดียว รับ 80/443 และขอใบรับรอง HTTPS จาก Let's Encrypt ให้อัตโนมัติ
+
+# ชื่อโปรเจกต์แยกจาก docker-compose.yml (ซึ่งใช้ชื่อโฟลเดอร์ "finance-dashboard")
+# ถ้าชื่อซ้ำ Docker จะมองว่า service "db" ของทั้งสองไฟล์เป็นตัวเดียวกัน แล้วไปแทนที่ database ตอนพัฒนา
+name: finance-prod
+
+# ค่าที่ใช้ร่วมกันระหว่าง migrate กับ app (YAML anchor — เขียนครั้งเดียว ใช้หลายที่)
+x-app-env: &app-env
+  env_file: .env
+  environment:
+    # ประกอบ URL จากค่าใน .env เพื่อให้ตรงกันเสมอ — "db" คือชื่อ service ด้านล่าง
+    # (Docker ตั้ง DNS ภายในให้ container เรียกกันด้วยชื่อ service ได้)
+    DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    BETTER_AUTH_URL: https://${DOMAIN}
+
+services:
+  # ---------- ฐานข้อมูล ----------
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    # ไม่มี ports: → เข้าจากอินเทอร์เน็ตไม่ได้ (ปลอดภัยกว่า) ใช้ backup-db.sh หรือ docker compose exec แทน
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---------- migrate: รันครั้งเดียวต่อการ deploy แล้วจบ ----------
+  # ใช้ image ขั้น "migrator" ใน Dockerfile (มี drizzle-kit + tsx)
+  # seed เขียนให้รันซ้ำได้ปลอดภัย: ของที่มีอยู่แล้วจะถูกข้าม
+  migrate:
+    build:
+      context: .
+      target: migrator
+    <<: *app-env
+    command: ["sh", "-c", "npm run db:migrate && npm run db:seed"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ---------- แอป Next.js ----------
+  app:
+    build:
+      context: .
+      target: runner
+    <<: *app-env
+    restart: unless-stopped
+    # ไม่เปิดพอร์ตออกนอกเครื่อง — ให้ Caddy ส่งต่อมาที่ app:3000 ภายในเครือข่าย Docker
+    expose:
+      - "3000"
+    depends_on:
+      migrate:
+        # เปิดแอปก็ต่อเมื่อ migration สำเร็จ: ถ้า migration พัง แอปเวอร์ชันใหม่จะไม่ขึ้นมาใช้ schema ผิด
+        condition: service_completed_successfully
+
+  # ---------- Caddy: reverse proxy + HTTPS อัตโนมัติ ----------
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"        # HTTP — Let's Encrypt ใช้ยืนยันโดเมน แล้ว Caddy redirect ไป HTTPS
+      - "443:443"      # HTTPS
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # เก็บใบรับรอง HTTPS — ถ้าหาย Caddy ต้องขอใหม่ (Let's Encrypt จำกัดจำนวนครั้ง)
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

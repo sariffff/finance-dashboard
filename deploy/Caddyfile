@@ -1,0 +1,27 @@
+# Caddy — รับทุก request จากอินเทอร์เน็ตแล้วส่งต่อให้แอป
+# {$DOMAIN} อ่านจากตัวแปร DOMAIN ใน .env
+#   - โดเมนจริง (เช่น finance.example.com): Caddy ขอใบรับรองจาก Let's Encrypt ให้เองและต่ออายุอัตโนมัติ
+#   - localhost: ใช้ใบรับรองที่ Caddy สร้างเอง (เบราว์เซอร์จะเตือน — ใช้ทดสอบในเครื่องเท่านั้น)
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		# บังคับใช้ HTTPS ต่อไปอีก 1 ปี
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		# ไม่บอกว่าใช้ server อะไร
+		-Server
+		-X-Powered-By
+	}
+
+	# statement PDF จำกัดไว้ 5MB ในแอป — กันไฟล์ใหญ่ผิดปกติตั้งแต่หน้าประตู
+	request_body {
+		max_size 10MB
+	}
+
+	reverse_proxy app:3000
+}
