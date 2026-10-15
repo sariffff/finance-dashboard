@@ -1,4 +1,21 @@
-# Deploy บน VPS
+# Deploy
+
+มี 2 แบบ: **Vercel + Neon** (ใช้กับ demo ตอนนี้ ฟรี ไม่ต้องมีเซิร์ฟเวอร์) หรือ **VPS + Docker** (คุมเองทั้งหมด)
+
+## แบบที่ 1: Vercel + Neon (demo ปัจจุบัน)
+
+- Project `finance-dashboard` บน Vercel เชื่อมกับ GitHub — **push เข้า `main` = deploy production อัตโนมัติ**
+  (branch อื่นไม่ deploy: `git.deploymentEnabled` ใน `vercel.json` เพราะ env ตั้งไว้เฉพาะ production)
+- Database: Neon (ติดตั้งผ่าน Vercel Marketplace) — Vercel ใส่ `DATABASE_URL` (pooled) และ `DATABASE_URL_UNPOOLED` ให้เอง
+- Build command `node scripts/vercel-build.mjs`: รัน migration ผ่าน `DATABASE_URL_UNPOOLED` ก่อน แล้วค่อย `next build`
+- `BETTER_AUTH_URL` ไม่ต้องตั้ง: ใช้โดเมน production ที่ Vercel ให้ (`VERCEL_PROJECT_PRODUCTION_URL`)
+- Env ที่ตั้งเอง (Production): `BETTER_AUTH_SECRET`, `CRON_SECRET`, `DEMO_USER_EMAIL`, `DEMO_USER_PASSWORD`, `GEMINI_API_KEY` (free tier), `AI_MODEL=gemini-3.5-flash-lite`
+  - สร้าง secret บน Windows ให้ตัด `\r` ด้วย: `openssl rand -hex 32 | tr -d '\r\n' | vercel env add CRON_SECRET production`
+- Vercel Cron เรียก `/api/cron/reset-demo` ทุกวัน 03:00 (เวลาไทย) รีเซ็ตบัญชี demo — ต้องมี `Authorization: Bearer $CRON_SECRET`
+- Seed ครั้งแรก (หมวดหมู่ + กฎ + บัญชี demo): รัน `npm run db:seed` จากเครื่องโดยตั้ง `DATABASE_URL` เป็นค่า `DATABASE_URL_UNPOOLED` ของ Neon
+- ไฟล์อัปโหลดจำกัด 4MB (Vercel รับ request ได้ไม่เกิน 4.5MB) และยังไม่ได้ตั้งที่เก็บไฟล์ (R2) — ระบบทำงานได้ แค่ไม่เก็บไฟล์ต้นฉบับ
+
+## แบบที่ 2: VPS + Docker
 
 ทั้งระบบรันด้วย `docker-compose.prod.yml`: **db** (PostgreSQL) → **migrate** (รัน migration แล้วจบ) → **app** (Next.js) → **caddy** (HTTPS)
 ไฟล์ต้นฉบับ (statement/สลิป) เก็บใน **Cloudflare R2** ไม่ได้อยู่บนเซิร์ฟเวอร์

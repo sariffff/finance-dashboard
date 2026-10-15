@@ -9,7 +9,14 @@ import * as schema from "./schema";
 // client on globalThis stops each reload from opening a new connection pool.
 const globalForDb = globalThis as unknown as { pgClient?: postgres.Sql };
 
-export const client = globalForDb.pgClient ?? postgres(env.DATABASE_URL);
+// Neon's pooled endpoint (host contains "-pooler") runs PgBouncer in
+// transaction mode, which can't keep named prepared statements across
+// transactions — turn them off there. Direct connections keep them.
+// (A plain string check: during `docker build` the URL isn't set at all.)
+const pooled = Boolean(env.DATABASE_URL?.includes("-pooler."));
+
+export const client =
+  globalForDb.pgClient ?? postgres(env.DATABASE_URL, pooled ? { prepare: false } : {});
 
 if (env.NODE_ENV !== "production") {
   globalForDb.pgClient = client;

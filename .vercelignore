@@ -1,0 +1,20 @@
+# Files `vercel deploy` must not upload. Secrets stay local; Vercel gets its
+# env vars from the project settings.
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Built or installed on Vercel
+node_modules
+.next
+
+# Local tooling and test output
+.agents
+.claude
+skills-lock.json
+backups
+coverage
+test-results
+playwright-report
+*.tsbuildinfo

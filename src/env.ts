@@ -15,7 +15,16 @@ const model = z.enum(AI_MODELS, {
 const envSchema = z.object({
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   BETTER_AUTH_SECRET: z.string().min(32),
-  BETTER_AUTH_URL: z.url(),
+  // On Vercel it defaults to the project's production domain, which Vercel
+  // provides as VERCEL_PROJECT_PRODUCTION_URL (a host name, no scheme).
+  BETTER_AUTH_URL: z.preprocess(
+    (value) =>
+      value ||
+      (process.env.VERCEL_PROJECT_PRODUCTION_URL
+        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+        : undefined),
+    z.url(),
+  ),
   // Shared demo account behind the "ลองใช้ด้วยบัญชีตัวอย่าง" button.
   // Its password is effectively public — it must only ever hold seed data.
   DEMO_USER_EMAIL: z.email(),
@@ -39,6 +48,9 @@ const envSchema = z.object({
   S3_ACCESS_KEY_ID: optional(z.string()),
   S3_SECRET_ACCESS_KEY: optional(z.string()),
   S3_FORCE_PATH_STYLE: optional(z.enum(["true", "false"])).transform((value) => value === "true"),
+  // Vercel Cron sends it as a bearer token; the demo-reset job refuses
+  // every request when it isn't set. Generate with: openssl rand -hex 32
+  CRON_SECRET: optional(z.string().min(16)),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),

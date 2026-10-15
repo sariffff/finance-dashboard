@@ -7,8 +7,9 @@ const nextConfig: NextConfig = {
     agentFeedback: true,
     serverActions: {
       // Statement PDFs are uploaded through a server action (default 1MB).
-      // The upload action itself rejects files over 5MB.
-      bodySizeLimit: "6mb",
+      // The upload actions reject files over 4MB (Vercel caps request
+      // bodies at 4.5MB).
+      bodySizeLimit: "4.5mb",
     },
   },
   cacheComponents: true,
