@@ -100,6 +100,24 @@ jobs:
       - name: Build
         run: npm run build
 
+      # e2e: Playwright เปิด Chromium จริง กดผ่าน flow หลัก (สมัคร → นำเข้า PDF → dashboard)
+      # กับแอปที่ build ข้างบน (npm run start) และ database ที่ seed ไว้แล้ว
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
   docker:
     name: Docker image builds
     runs-on: ubuntu-latest
