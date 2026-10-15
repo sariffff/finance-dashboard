@@ -1,0 +1,22 @@
+# Caddy รับคำขอจากอินเทอร์เน็ตแล้วส่งต่อให้ container "app"
+# ใส่ชื่อโดเมน = Caddy ขอใบรับรอง HTTPS จาก Let's Encrypt และต่ออายุให้เอง
+# DOMAIN มาจาก .env.production (ถ้าเป็น localhost จะใช้ใบรับรองของ Caddy เองสำหรับทดสอบ)
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# ไฟล์ statement จำกัดที่ 5MB ในแอปอยู่แล้ว — กันคำขอใหญ่ผิดปกติตั้งแต่หน้าประตู
+	request_body {
+		max_size 10MB
+	}
+
+	reverse_proxy app:3000
+}

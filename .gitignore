@@ -42,3 +42,7 @@ next-env.d.ts
 
 # allow the env template
 !.env.example
+!.env.production.example
+
+# database backups (contain user financial data)
+/backups

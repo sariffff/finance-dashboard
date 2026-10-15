@@ -1,0 +1,106 @@
+# docker-compose.prod.yml — รันทั้งระบบบนเซิร์ฟเวอร์จริง (VPS)
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# ลำดับการเปิด (Docker จัดให้เองตาม depends_on):
+#   1. db       — PostgreSQL เปิดและผ่าน healthcheck
+#   2. migrate  — รัน migration ครั้งเดียวแล้วจบ (exit 0)
+#   3. app      — Next.js เปิดหลัง migrate สำเร็จเท่านั้น
+#   4. caddy    — รับคนจากอินเทอร์เน็ต (พอร์ต 80/443) ขอใบรับรอง HTTPS เอง แล้วส่งต่อให้ app
+#
+# ต่างจาก docker-compose.yml (ตอนพัฒนา):
+#   - db ไม่เปิดพอร์ตออกนอกเครื่อง — มีแค่ app/migrate ที่คุยกับ db ผ่าน network ภายในของ Docker
+#   - ไม่มี Adminer และ RustFS — production เก็บไฟล์ใน Cloudflare R2
+#   - ทุกค่ามาจาก .env.production (ดูตัวอย่างที่ .env.production.example)
+
+name: finance-prod   # ชื่อโปรเจกต์ แยก container/volume ไม่ให้ชนกับชุดพัฒนา
+
+# ค่า env ที่ทั้ง app และ migrate ใช้ร่วมกัน (YAML anchor: เขียนครั้งเดียว อ้างซ้ำด้วย <<: *app-env)
+x-app-env: &app-env
+  # คุยกับ db ด้วยชื่อ service "db" พอร์ต 5432 ภายใน network ของ Docker
+  DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?ต้องตั้ง BETTER_AUTH_SECRET}
+  BETTER_AUTH_URL: https://${DOMAIN}
+  DEMO_USER_EMAIL: ${DEMO_USER_EMAIL}
+  DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  AI_MODEL: ${AI_MODEL:-}
+  AI_MODEL_CATEGORIZE: ${AI_MODEL_CATEGORIZE:-}
+  AI_MODEL_SLIP: ${AI_MODEL_SLIP:-}
+  AI_MODEL_INSIGHTS: ${AI_MODEL_INSIGHTS:-}
+  S3_ENDPOINT: ${S3_ENDPOINT:-}
+  S3_REGION: ${S3_REGION:-auto}
+  S3_BUCKET: ${S3_BUCKET:-}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+  S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+
+services:
+  # ---------- ฐานข้อมูล ----------
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?ต้องตั้ง POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?ต้องตั้ง POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?ต้องตั้ง POSTGRES_DB}
+    # ไม่มี ports: — คนนอกเครื่องเข้าถึง database ไม่ได้เลย
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---------- migration: รันครั้งเดียวทุกครั้งที่ deploy แล้วจบ ----------
+  migrate:
+    build:
+      context: .
+      target: migrator          # ใช้ขั้น migrator ใน Dockerfile (มี drizzle-kit)
+    image: finance-dashboard-migrate
+    environment:
+      <<: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"               # จบแล้วจบเลย ไม่ต้องเปิดใหม่
+
+  # ---------- แอป Next.js ----------
+  app:
+    build:
+      context: .
+      target: runner
+    image: finance-dashboard
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      NODE_ENV: production
+    # ไม่มี ports: — เข้าได้ทาง caddy เท่านั้น
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully   # migration พัง = แอปไม่เปิด (ดีกว่าเปิดมากับ schema ผิด)
+
+  # ---------- Caddy: reverse proxy + HTTPS อัตโนมัติ ----------
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?ต้องตั้ง DOMAIN}
+    ports:
+      - "80:80"                 # HTTP (Caddy redirect ไป HTTPS และใช้ตอนขอใบรับรอง)
+      - "443:443"               # HTTPS
+      - "443:443/udp"           # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # เก็บใบรับรอง HTTPS — ลบทิ้งแล้วต้องขอใหม่ (มีโควตาต่อสัปดาห์)
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
