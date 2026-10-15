@@ -21,13 +21,17 @@ export function monthRange(month: string): { start: string; end: string } {
 
 /** The current month in Bangkok time. */
 export function currentMonth(now = new Date()): string {
+  return currentDate(now).slice(0, 7);
+}
+
+/** Today's date in Bangkok time, "YYYY-MM-DD". */
+export function currentDate(now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Bangkok",
     year: "numeric",
     month: "2-digit",
-  })
-    .format(now)
-    .slice(0, 7);
+    day: "2-digit",
+  }).format(now);
 }
 
 const longFormatter = new Intl.DateTimeFormat("th-TH", {
