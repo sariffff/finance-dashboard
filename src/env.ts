@@ -15,7 +15,16 @@ const model = z.enum(AI_MODELS, {
 const envSchema = z.object({
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   BETTER_AUTH_SECRET: z.string().min(32),
-  BETTER_AUTH_URL: z.url(),
+  // On Vercel it defaults to the project's production domain, which Vercel
+  // provides as VERCEL_PROJECT_PRODUCTION_URL (a host name, no scheme).
+  BETTER_AUTH_URL: z.preprocess(
+    (value) =>
+      value ||
+      (process.env.VERCEL_PROJECT_PRODUCTION_URL
+        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+        : undefined),
+    z.url(),
+  ),
   // Shared demo account behind the "ลองใช้ด้วยบัญชีตัวอย่าง" button.
   // Its password is effectively public — it must only ever hold seed data.
   DEMO_USER_EMAIL: z.email(),
